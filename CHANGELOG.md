@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+### Added (Phase 3a)
+- EPSG:6933 equal-area grid (configurable resolution), per-platform cell-day aggregates with
+  incremental rebuild, coverage-aware monthly area series, `python -m app.cli.area_summary`.
+  Methodology: `docs/science/harmonization.md`.
+
 ### Fixed
 - `--bbox` values starting with '-' (west/south hemispheres) were read as options.
 - `data/downloads/` and `data/reference/` are now ignored by Git.

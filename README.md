@@ -111,6 +111,15 @@ python -m app.cli.fetch_firms --source MODIS_NRT --world --start 2026-11-12 --en
 
 The bbox above is only an example area. See `docs/architecture/firms-api.md`.
 
+## Area summary
+
+From `backend/`: monthly detections and active 1 km cells per satellite for an area,
+with coverage status (blank = no data, not zero):
+
+```powershell
+python -m app.cli.area_summary --bbox 76.7,12.6,84.8,19.9 --start 2026-11-01 --end 2026-11-14
+```
+
 ## Tests and checks
 
 ```powershell
