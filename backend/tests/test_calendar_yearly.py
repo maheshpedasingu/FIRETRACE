@@ -55,6 +55,15 @@ def test_calendar_states_and_anomalies():
     assert set(cal[cal.platform == "NOAA-21"].state) == {"missing"}
 
 
+@pytest.mark.filterwarnings("error")  # regression: Pandas4Warning on str fill of float columns
+def test_calendar_grid_partial_year_has_no_dtype_warning():
+    rows = month_rows("NOAA-20", 2026, [np.nan] * 10, status="missing")
+    rows.append({"platform": "NOAA-20", "year": 2026, "month": 11, "coverage_status": "partial",
+                 "days_covered": 3, "days_in_range": 14, "detections": 462})  # fmt: skip
+    grid = calendar_grid(build_calendar(pd.DataFrame(rows)), "NOAA-20")
+    assert grid.loc[0, "Nov"] == "partial:462" and grid.loc[0, "Dec"] == "outside range"
+
+
 def test_calendar_grid_rows_are_years_columns_are_months():
     grid = calendar_grid(build_calendar(synthetic_series()), "Aqua")
     assert list(grid.columns) == ["year", *MONTH_NAMES]

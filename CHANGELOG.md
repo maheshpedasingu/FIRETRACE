@@ -1,6 +1,14 @@
 # Changelog
 
 ## [Unreleased]
+### Added (Phase 5a)
+- REST API covering every endpoint of the specification (§11) with validation, pagination,
+  saved AOIs (bbox or Shapely-validated GeoJSON polygons), upload and FIRMS ingestion, CSV /
+  zip-with-provenance / report exports. Documentation: `docs/api/README.md`.
+
+### Fixed
+- Calendar grid no longer fills float columns with text (Pandas4Warning).
+
 ### Added (Phase 4)
 - Burning activity calendar with explicit cell states (value / zero / partial / uncovered /
   missing) and anomaly overlay; yearly totals with year-over-year change for complete years;

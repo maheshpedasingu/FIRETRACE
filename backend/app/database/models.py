@@ -98,3 +98,20 @@ class CoverageRecord(Base):
     note: Mapped[str | None] = mapped_column(Text)
 
     run: Mapped[IngestionRun] = relationship(back_populates="coverage")
+
+
+class SavedAOI(Base):
+    """A named area of interest (GeoJSON polygon or bbox)."""
+
+    __tablename__ = "aois"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), unique=True)
+    kind: Mapped[str] = mapped_column(String(16))  # bbox | polygon
+    west: Mapped[float] = mapped_column()
+    south: Mapped[float] = mapped_column()
+    east: Mapped[float] = mapped_column()
+    north: Mapped[float] = mapped_column()
+    geojson: Mapped[str | None] = mapped_column(Text)
+    country: Mapped[str | None] = mapped_column(String(200))
+    created_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True))

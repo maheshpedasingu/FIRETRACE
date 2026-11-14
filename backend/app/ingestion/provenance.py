@@ -16,14 +16,15 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def store_raw_file(source: Path, raw_dir: Path, checksum: str) -> Path:
+def store_raw_file(source: Path, raw_dir: Path, checksum: str, name: str | None = None) -> Path:
     """Copy a source file into the raw store unchanged, keyed by its checksum.
 
-    The original filename is kept after the checksum prefix. If a file with the same
+    The original filename (``name``, default the file's own name) is kept after the
+    checksum prefix. If a file with the same
     checksum is already stored, the existing copy is returned and nothing is written.
     """
     raw_dir.mkdir(parents=True, exist_ok=True)
-    target = raw_dir / f"{checksum[:16]}_{source.name}"
+    target = raw_dir / f"{checksum[:16]}_{name or source.name}"
     if target.exists():
         if sha256_file(target) != checksum:
             raise RuntimeError(f"Raw store corruption: {target} does not match {checksum}")
