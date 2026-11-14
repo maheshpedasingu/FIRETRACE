@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { ErrorBox, Loading, fmt } from "../components/Status";
 import { useAsync } from "../hooks/useAsync";
 import { daysBefore, isoDay, parseBBox, validateDates } from "../lib/area";
+import { formatUtc } from "../lib/time";
 import { fetchAvailability, fetchFirms, fetchHistory, uploadFile } from "../services/api";
 
 const SOURCES = [
@@ -188,7 +189,7 @@ export function IngestionPage() {
           <table className="w-full text-xs">
             <thead className="text-left text-[var(--text-secondary)]">
               <tr>
-                {["Started (UTC)", "Status", "File", "Read", "Valid", "Invalid", "Dup. in file", "Already stored", "Written", "Message"].map((h) => (
+                {["Started", "Status", "File", "Read", "Valid", "Invalid", "Dup. in file", "Already stored", "Written", "Message"].map((h) => (
                   <th key={h} scope="col" className="px-1">{h}</th>
                 ))}
               </tr>
@@ -196,7 +197,7 @@ export function IngestionPage() {
             <tbody>
               {history.data.items.map((r) => (
                 <tr key={r.run_id} className="border-t border-[var(--border)] tabular-nums">
-                  <td className="px-1">{r.started_utc.slice(0, 19)}</td>
+                  <td className="px-1">{formatUtc(r.started_utc)}</td>
                   <td className="px-1">{r.status}</td>
                   <td className="px-1" title={`SHA-256 ${r.sha256}`}>{r.file}</td>
                   <td className="px-1">{fmt(r.rows_read)}</td>

@@ -2,6 +2,7 @@ import { AsyncView, ErrorBox, Loading, fmt } from "../components/Status";
 import { useAsync } from "../hooks/useAsync";
 import { bboxText } from "../lib/area";
 import { PLATFORM_COLORS } from "../lib/colors";
+import { formatUtc } from "../lib/time";
 import { fetchAvailability, fetchHistory, fetchSummary } from "../services/api";
 import { useArea } from "../state/AreaContext";
 
@@ -81,7 +82,11 @@ export function OverviewPage() {
           <div className="space-y-2 text-sm">
             <p>
               Latest completed import:{" "}
-              <strong>{availability.data.latest_completed_import_utc ?? "none yet"}</strong>
+              <strong>
+                {availability.data.latest_completed_import_utc
+                  ? formatUtc(availability.data.latest_completed_import_utc)
+                  : "none yet"}
+              </strong>
             </p>
             {availability.data.imported_coverage.length === 0 ? (
               <p className="text-[var(--text-secondary)]">No data imported yet — no coverage is claimed.</p>

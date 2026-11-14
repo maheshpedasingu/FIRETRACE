@@ -139,6 +139,16 @@ python -m app.cli.export analytics --bbox 76.7,12.6,84.8,19.9 --start 2026-01-01
 
 Each file gets a `.provenance.json` sidecar. See `docs/science/analytics.md`.
 
+## Maintenance and performance
+
+```powershell
+python -m app.cli.compact                 # merge small files, verify the store
+python -m app.cli.compact --verify-only   # report only
+python -m app.cli.benchmark --rows 2000000 --workdir ..\benchmark_work   # synthetic data, new folder
+```
+
+See `docs/validation/performance.md`.
+
 ## Tests and checks
 
 ```powershell

@@ -10,8 +10,11 @@ For one source file:
 4. Commit the staged files into the store, then record coverage and mark the run
    ``completed``. On any error the staged files are deleted and the run is ``failed``.
 
-Memory use is bounded by the chunk size, plus the observation_ids of one file and of
-the partitions that file touches.
+Memory use is bounded by the chunk size, the write buffer (``flush_rows`` new rows,
+default 500,000) and the observation_ids of one file and of the partitions it touches.
+Buffering writes each partition once per flush instead of once per chunk; with data
+spread over many partitions this is the difference between a few thousand files and
+hundreds of thousands (found by the synthetic benchmark, 2026-11-14).
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pandas as pd
 from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
@@ -40,6 +44,7 @@ from app.storage.observation_store import ObservationStore
 from app.storage.partitioning import PartitionKey, iter_partitions
 
 SessionFactory = Callable[[], Session]
+DEFAULT_FLUSH_ROWS = 500_000
 
 
 @dataclass
@@ -52,6 +57,12 @@ class ImportOptions:
     coverage_platforms: tuple[Platform, ...] = ()
     chunk_rows: int = DEFAULT_CHUNK_ROWS
     tile_degrees: int = 10
+    # New rows are buffered per partition and written once this many rows are buffered
+    # (and at the end of the file). Fewer, larger Parquet files; memory stays bounded.
+    flush_rows: int = DEFAULT_FLUSH_ROWS
+    # Optional progress callback: called after each flush with (rows staged so far,
+    # files staged so far) for this import. Never affects results.
+    progress: Callable[[int, int], None] | None = None
 
 
 @dataclass
@@ -190,6 +201,24 @@ def import_file(
     archive_specs: dict[str, CoverageSpec] = {}
     observed: set[tuple[str, str]] = set()
     committed = False
+    buffer: dict[PartitionKey, list[pd.DataFrame]] = {}
+    buffered = 0
+    staged_rows = 0
+    staged_files = 0
+
+    def flush() -> None:
+        """Write buffered rows: one staged file per partition."""
+        nonlocal buffered, staged_rows, staged_files
+        if buffer:
+            frames = [frame for parts in buffer.values() for frame in parts]
+            staged_files += store.stage_many(
+                run_id, pd.concat(frames, ignore_index=True), options.tile_degrees
+            )
+            staged_rows += buffered
+            if options.progress is not None:
+                options.progress(staged_rows, staged_files)
+        buffer.clear()
+        buffered = 0
 
     try:
         with session_factory() as session:
@@ -240,9 +269,13 @@ def import_file(
                         )
                     )
                     if len(new):
-                        store.stage(run_id, key, new)
+                        buffer.setdefault(key, []).append(new)
+                        buffered += len(new)
                         result.rows_written += len(new)
+                if buffered >= options.flush_rows:
+                    flush()
                 session.commit()  # invalid records are kept even if a later chunk fails
+            flush()
 
         with session_factory() as session:
             run = session.get(IngestionRun, run_id)

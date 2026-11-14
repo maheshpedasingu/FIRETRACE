@@ -86,6 +86,23 @@ def test_import_writes_partitioned_parquet_with_provenance(env):
     assert not store.staged_runs()
 
 
+def test_rows_are_buffered_into_one_file_per_partition(env):
+    run, stored, _, store, *_ = env
+    text = HEADER + ROW_A + ROW_B + ROW_C + ROW_A.replace("1302", "1303")
+    result = run("SYNTHETIC_buffered.csv", text, chunk_rows=1)  # 4 chunks
+    assert result.rows_written == 4
+    assert len(store.all_files()) == 3  # one per partition, not one per chunk
+
+
+def test_buffer_is_flushed_when_the_row_limit_is_reached(env):
+    run, stored, _, store, *_ = env
+    text = HEADER + "".join(ROW_A.replace("1302", f"13{i:02d}") for i in range(5))
+    result = run("SYNTHETIC_flush.csv", text, chunk_rows=1, flush_rows=2)
+    assert result.rows_written == 5
+    assert len(store.all_files()) == 3  # flushes after rows 2 and 4, then the last row
+    assert len(stored()) == 5 and stored()["observation_id"].is_unique
+
+
 def test_identical_file_imported_twice_does_not_change_counts(env):
     run, stored, sessions, *_ = env
     first = run("SYNTHETIC_a.csv", HEADER + ROW_A + ROW_B)

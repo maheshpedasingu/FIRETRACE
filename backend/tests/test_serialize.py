@@ -25,6 +25,10 @@ def test_numpy_and_time_types():
     json.dumps(out, allow_nan=False)
 
 
+def test_naive_database_datetimes_are_labelled_utc():
+    assert to_jsonable(datetime(2026, 11, 14, 7, 19, 51)) == "2026-11-14T07:19:51+00:00"
+
+
 def test_dataframe_with_nullable_int_and_nan():
     frame = pd.DataFrame({"x": pd.array([1, None], dtype="Int64"), "y": [np.nan, 2.0]})
     assert to_jsonable(frame) == [{"x": 1, "y": None}, {"x": None, "y": 2.0}]
