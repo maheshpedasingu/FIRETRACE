@@ -1,4 +1,5 @@
 import { AsyncView, ErrorBox, Loading, fmt } from "../components/Status";
+import { coveredCount } from "../lib/coverage";
 import { useAsync } from "../hooks/useAsync";
 import { bboxText } from "../lib/area";
 import { PLATFORM_COLORS } from "../lib/colors";
@@ -44,6 +45,7 @@ export function OverviewPage() {
               <table className="mt-4 w-full text-sm">
                 <caption className="mb-1 text-left text-xs text-[var(--text-secondary)]">
                   Per platform — MODIS and VIIRS are never summed. Months: complete / partial / missing coverage.
+                  A dash (—) means no imported coverage for this area: unknown, not zero.
                 </caption>
                 <thead className="text-left text-[var(--text-secondary)]">
                   <tr>
@@ -60,8 +62,8 @@ export function OverviewPage() {
                         <span className="mr-2 inline-block h-2 w-2 rounded-full" style={{ background: PLATFORM_COLORS[p.platform] }} aria-hidden />
                         {p.platform}
                       </th>
-                      <td className="text-right tabular-nums">{fmt(p.detections)}</td>
-                      <td className="text-right tabular-nums">{fmt(p.unique_cells)}</td>
+                      <td className="text-right tabular-nums">{fmt(coveredCount(p.detections, p))}</td>
+                      <td className="text-right tabular-nums">{fmt(coveredCount(p.unique_cells, p))}</td>
                       <td className="text-right tabular-nums">
                         {p.months_complete} / {p.months_partial} / {p.months_missing}
                       </td>

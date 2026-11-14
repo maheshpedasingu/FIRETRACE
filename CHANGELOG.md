@@ -10,6 +10,11 @@
 - MODIS confidence thresholds checked against the MODIS C6/C6.1 Active Fire User's
   Guide v1.0, Table 11 (implementation unchanged; it already matched).
 - README: status, verified clean-clone install, removed the empty `scripts/` entry.
+
+### Fixed (Phase 6b)
+- Overview per-platform table showed 0 detections for platforms with no imported
+  coverage of the area; it now shows "—" (unknown), keeping 0 for covered areas.
+- Table columns in the dashboard had no gap between right- and left-aligned headers.
 - Dev dependency `httpx2` (pinned 2.16.0 with `httpcore2`, `truststore`): Starlette's
   TestClient uses it, removing its httpx deprecation warning. Application code keeps httpx.
 
