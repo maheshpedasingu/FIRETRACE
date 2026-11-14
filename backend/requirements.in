@@ -1,0 +1,16 @@
+# Top-level runtime dependencies (unpinned). Exact verified versions are pinned in
+# requirements.txt, generated with `pip freeze` after a successful install and test run.
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+sqlalchemy
+python-multipart
+httpx
+pandas
+numpy
+geopandas
+shapely
+pyproj
+pyarrow
+duckdb
