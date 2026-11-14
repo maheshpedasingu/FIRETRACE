@@ -1,6 +1,15 @@
 # Changelog
 
 ## [Unreleased]
+### Changed (Phase 6b)
+- Dev dependency `httpx2` (pinned 2.16.0 with `httpcore2`, `truststore`): Starlette's
+  TestClient uses it, removing its httpx deprecation warning. Application code keeps httpx.
+
+### Changed (Phase 6a, performance)
+- Imports buffer rows per partition and write each partition as a slice of one Arrow
+  table, with progress output. Benchmark: clustered spread by default, `--spread uniform`
+  as the worst case. Windows results in `docs/validation/performance.md`.
+
 ### Added (Phase 6a)
 - Crash-safe partition compaction with recovery and store verification (`python -m app.cli.compact`).
 - Synthetic performance benchmark in an isolated folder (`python -m app.cli.benchmark`).
