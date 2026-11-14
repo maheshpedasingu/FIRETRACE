@@ -1,3 +1,6 @@
 # Development and test dependencies (unpinned; pinned via requirements.txt freeze).
 pytest
 ruff
+# Test client transport for starlette.testclient (removes its httpx deprecation
+# warning). Application code keeps using httpx.
+httpx2

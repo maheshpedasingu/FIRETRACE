@@ -10,6 +10,18 @@
   --text-muted: #8a8980;
 }
 
+/* Space between table columns (base layer: utilities such as px-1 still override). */
+@layer base {
+  th,
+  td {
+    padding-inline-start: 0.75rem;
+  }
+  th:first-child,
+  td:first-child {
+    padding-inline-start: 0;
+  }
+}
+
 body {
   background: var(--surface);
   color: var(--text-primary);

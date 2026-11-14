@@ -7,9 +7,9 @@ Sources for the code tables below (checked 2026-11-14):
   version "6.1NRT" = Collection 6.1 NRT, "6.1" = Collection 6.1 standard processing,
   suffix "URT" = Ultra Real-Time; type 0-3 only in standard-quality data;
   VIIRS I-4 brightness may be named "brightness" in web services.
-- MODIS confidence class thresholds (low < 30, nominal 30-79, high >= 80): MODIS
-  Collection 6 Active Fire Product User's Guide (Giglio et al.). NOT yet re-checked
-  against the document in this project; see docs/science/ingestion.md.
+- MODIS confidence class thresholds: MODIS Collection 6 and 6.1 Active Fire Product
+  User's Guide v1.0 (Giglio et al.), FAQ 8.4.3, Table 11: low 0 <= C < 30,
+  nominal 30 <= C < 80, high 80 <= C <= 100. Checked 2026-11-14.
 
 Unrecognised codes are rejected with a reason, never guessed.
 """

@@ -1,6 +1,31 @@
 # Changelog
 
-## [Unreleased]
+## [1.0.0] - 2026-11-14
+### Added (release)
+- MIT `LICENSE`; dashboard screenshots in `docs/screenshots/` and the README.
+
+### Added (Phase 6b)
+- `docs/FINAL_REPORT.md` (spec §18), `docs/DATA_PROVENANCE.md`,
+  `docs/science/METHODOLOGY.md`; documentation index in the README.
+- Test of MODIS confidence class boundaries (0/29/30/79/80/100).
+
+### Changed (Phase 6b)
+- MODIS confidence thresholds checked against the MODIS C6/C6.1 Active Fire User's
+  Guide v1.0, Table 11 (implementation unchanged; it already matched).
+- README: status, verified clean-clone install, removed the empty `scripts/` entry.
+
+### Fixed (Phase 6b)
+- Overview per-platform table showed 0 detections for platforms with no imported
+  coverage of the area; it now shows "—" (unknown), keeping 0 for covered areas.
+- Table columns in the dashboard had no gap between right- and left-aligned headers.
+- Dev dependency `httpx2` (pinned 2.16.0 with `httpcore2`, `truststore`): Starlette's
+  TestClient uses it, removing its httpx deprecation warning. Application code keeps httpx.
+
+### Changed (Phase 6a, performance)
+- Imports buffer rows per partition and write each partition as a slice of one Arrow
+  table, with progress output. Benchmark: clustered spread by default, `--spread uniform`
+  as the worst case. Windows results in `docs/validation/performance.md`.
+
 ### Added (Phase 6a)
 - Crash-safe partition compaction with recovery and store verification (`python -m app.cli.compact`).
 - Synthetic performance benchmark in an isolated folder (`python -m app.cli.benchmark`).

@@ -90,6 +90,22 @@ def test_modis_confidence_kept_raw_and_classified_at_documented_thresholds():
     assert list(valid["confidence_class"]) == ["high", "low", "nominal"]
 
 
+def test_modis_confidence_class_boundaries_match_user_guide_table_11():
+    """MODIS C6/C6.1 User's Guide, Table 11: low 0-<30, nominal 30-<80, high 80-100."""
+    header = SYNTHETIC_MODIS_CSV.splitlines()[0]
+    values = ["0", "29", "30", "79", "80", "100"]
+    rows = [
+        f"10.0,{20 + i}.0,330.0,1.0,1.0,2020-01-01,1200,A,MODIS,{c},6.1,300.0,10.0,D,0"
+        for i, c in enumerate(values)
+    ]
+    valid, invalid = _parse("\n".join([header, *rows]) + "\n")
+    assert invalid.empty
+    assert list(valid["confidence_raw"]) == values
+    assert list(valid["confidence_class"]) == [
+        "low", "low", "nominal", "nominal", "high", "high"
+    ]  # fmt: skip
+
+
 def test_viirs_platforms_and_confidence_letters():
     valid, invalid = _parse(SYNTHETIC_VIIRS_CSV)
     assert invalid.empty
