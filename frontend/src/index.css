@@ -1,1 +1,73 @@
 @import "tailwindcss";
+
+/* Dark scientific surface; tokens follow the validated reference palette (dark steps). */
+:root {
+  color-scheme: dark;
+  --surface: #1a1a19;
+  --border: #383835;
+  --text-primary: #f0efec;
+  --text-secondary: #c3c2b7;
+  --text-muted: #8a8980;
+}
+
+body {
+  background: var(--surface);
+  color: var(--text-primary);
+  font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+}
+
+.field {
+  background: #232322;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: var(--text-primary);
+}
+.field:disabled {
+  opacity: 0.5;
+}
+.field:focus-visible,
+.btn:focus-visible,
+.btn-primary:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 1px;
+}
+
+.btn,
+.btn-primary {
+  border-radius: 6px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+}
+.btn {
+  background: #232322;
+  color: var(--text-primary);
+}
+.btn-primary {
+  background: #3987e5;
+  border-color: #3987e5;
+  color: #0b0b0b;
+  font-weight: 600;
+}
+.btn:disabled,
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Leaflet controls on the dark surface */
+.leaflet-container {
+  font: inherit;
+}
+.leaflet-tooltip {
+  background: #232322;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
