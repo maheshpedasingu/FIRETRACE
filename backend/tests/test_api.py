@@ -81,10 +81,13 @@ def test_upload_import_duplicate_and_history(client):
     again = upload(client, name="SYNTHETIC_copy.csv")
     assert again.json()["status"] == "skipped_duplicate_file"
     history = client.get("/api/ingest/history").json()
-    assert history["total"] == 2 and history["items"][0]["file"] in (
-        "SYNTHETIC.csv",
-        "SYNTHETIC_copy.csv",
-    )
+    # provenance shows the user's original file name, not the internal upload copy name
+    assert history["total"] == 2
+    assert {item["file"] for item in history["items"]} == {"SYNTHETIC.csv"}
+    item = client.get("/api/hotspots", params=AREA | {"page_size": 1}).json()["items"][0]
+    assert item["source_file"] == "SYNTHETIC.csv"
+    raw_files = [p.name for p in Path(client.settings.raw_data_dir).iterdir()]
+    assert len(raw_files) == 1 and raw_files[0].endswith("_SYNTHETIC.csv")
 
 
 def test_upload_rejects_wrong_type_and_invalid_content(client):

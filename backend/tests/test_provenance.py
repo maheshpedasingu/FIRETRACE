@@ -23,3 +23,5 @@ def test_raw_store_is_unchanged_copy_and_idempotent(tmp_path: Path):
     assert first == second
     assert first.read_bytes() == source.read_bytes()
     assert len(list(raw_dir.iterdir())) == 1
+    named = store_raw_file(source, tmp_path / "raw2", checksum, name="original.csv")
+    assert named.name == f"{checksum[:16]}_original.csv"

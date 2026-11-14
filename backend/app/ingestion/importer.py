@@ -124,12 +124,16 @@ def import_file(
     store: ObservationStore,
     raw_dir: Path,
     options: ImportOptions | None = None,
+    source_name: str | None = None,
 ) -> ImportResult:
+    """Import one file. ``source_name`` is the user's original file name when ``path`` is a
+    renamed copy (e.g. an upload); it is what provenance records show."""
     options = options or ImportOptions()
     path = Path(path)
+    name = source_name or path.name
     checksum = sha256_file(path)
     run_id = uuid.uuid4().hex
-    result = ImportResult(run_id, RunStatus.RUNNING, path.name, checksum)
+    result = ImportResult(run_id, RunStatus.RUNNING, name, checksum)
 
     with session_factory() as session:
         source = session.scalar(select(SourceFile).where(SourceFile.sha256 == checksum))
@@ -137,10 +141,10 @@ def import_file(
             run.status == RunStatus.COMPLETED for run in source.runs
         )
         if source is None:
-            stored = store_raw_file(path, raw_dir, checksum)
+            stored = store_raw_file(path, raw_dir, checksum, name)
             source = SourceFile(
                 sha256=checksum,
-                original_name=path.name,
+                original_name=name,
                 stored_path=str(stored),
                 size_bytes=path.stat().st_size,
                 first_seen_utc=_now(),
@@ -175,7 +179,7 @@ def import_file(
         return result
 
     context = SourceContext(
-        source_file=path.name,
+        source_file=name,
         source_checksum=checksum,
         ingestion_timestamp=_now(),
         declared_platform=options.declared_platform,

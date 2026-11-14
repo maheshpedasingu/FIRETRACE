@@ -94,7 +94,7 @@ async def upload(
     try:
         result = await run_in_threadpool(
             import_file, target, session_factory=services.sessions, store=services.store,
-            raw_dir=services.raw, options=options,
+            raw_dir=services.raw, options=options, source_name=name,
         )  # fmt: skip
     except FirmsFormatError as exc:
         raise HTTPException(422, f"not a valid FIRMS file: {exc}") from exc
