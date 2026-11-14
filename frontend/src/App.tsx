@@ -3,7 +3,6 @@ import { AreaBar } from "./components/AreaBar";
 import { Loading } from "./components/Status";
 import { useAsync } from "./hooks/useAsync";
 import type { AreaQuery } from "./lib/area";
-import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { ExplorerPage } from "./pages/ExplorerPage";
 import { ExportPage } from "./pages/ExportPage";
@@ -13,7 +12,11 @@ import { fetchAOIs, fetchHealth } from "./services/api";
 import { AreaProvider, useArea } from "./state/AreaContext";
 import type { HealthResponse } from "./types/api";
 
+// Map (Leaflet) and Analytics (Recharts) load on first use, keeping the initial bundle small.
 const MapPage = lazy(() => import("./maps/MapPage"));
+const AnalyticsPage = lazy(() =>
+  import("./pages/AnalyticsPage").then((m) => ({ default: m.AnalyticsPage })),
+);
 
 const PAGES = [
   { id: "overview", label: "Overview" },
@@ -113,7 +116,11 @@ function Shell() {
           </Suspense>
         )}
         {page === "calendar" && <CalendarPage />}
-        {page === "analytics" && <AnalyticsPage />}
+        {page === "analytics" && (
+          <Suspense fallback={<Loading what="analytics" />}>
+            <AnalyticsPage />
+          </Suspense>
+        )}
         {page === "explorer" && <ExplorerPage />}
         {page === "ingestion" && <IngestionPage />}
         {page === "export" && <ExportPage />}

@@ -78,8 +78,14 @@ export function AreaBar({ query, onApply, savedAois, today = new Date() }: Props
     setPlatforms((current) => (current.includes(p) ? current.filter((x) => x !== p) : [...current, p]));
 
   const parsed = parseBBox(bbox);
+  // noValidate: the browser's built-in checks (e.g. date max) would block submit before
+  // FIRETRACE's own validation, hiding its specific, accessible messages.
   return (
-    <form onSubmit={submit} aria-label="Area and period" className="flex flex-wrap items-end gap-3 border-b border-[var(--border)] px-6 py-3 text-sm">
+    <form
+      onSubmit={submit}
+      noValidate
+      aria-label="Area and period"
+      className="flex flex-wrap items-end gap-3 border-b border-[var(--border)] px-6 py-3 text-sm">
       <label className="flex flex-col gap-1">
         <span className="text-[var(--text-secondary)]">Area</span>
         <select

@@ -48,7 +48,7 @@ function UploadForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <form onSubmit={submit} aria-label="Upload FIRMS file" className="space-y-2 text-sm">
+    <form onSubmit={submit} noValidate aria-label="Upload FIRMS file" className="space-y-2 text-sm">
       <input aria-label="FIRMS file" type="file" accept=".csv,.zip" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
       <p className="text-xs text-[var(--text-secondary)]">
         Optional coverage — only if you know the exact area and dates the file was requested for. Without it, zero
@@ -99,7 +99,7 @@ function FirmsForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <form onSubmit={submit} aria-label="Fetch from FIRMS" className="space-y-2 text-sm">
+    <form onSubmit={submit} noValidate aria-label="Fetch from FIRMS" className="space-y-2 text-sm">
       <fieldset className="flex flex-wrap gap-3">
         <legend className="mb-1 text-[var(--text-secondary)]">Sources</legend>
         {SOURCES.map((s) => (
