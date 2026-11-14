@@ -51,4 +51,5 @@ enabled. Real data is imported later on the user's Windows PC.
 | Phase | Status | Verification | Commit |
 |---|---|---|---|
 | 0. Foundation — repo, structure, config templates | In progress | Structure created; startup NOT yet verified (blocked) | 525e76c |
-| 0. Global scope — architecture, plan, docs | Done (documentation only) | Docs reviewed; no code yet | see git log |
+| 0. Global scope — architecture, plan, docs | Done (documentation only) | Docs reviewed; no code yet | b3d71f9 |
+| 1. Foundation code (branch `phase1-foundation`) | Awaiting verification on Windows PC | Backend passes ruff lint/format and byte-compiles in sandbox; pytest, Vitest, typecheck, build and startup NOT yet run (dependencies unavailable in sandbox) | see git log |
