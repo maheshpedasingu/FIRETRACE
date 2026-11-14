@@ -1,6 +1,14 @@
 # Changelog
 
 ## [Unreleased]
+
+## [0.1-foundation] — 2026-11-14
+### Added
+- FastAPI app with `GET /api/health` (reports whether a MAP_KEY is configured, never the key).
+- React + TypeScript + Vite + Tailwind shell showing backend status and an empty-coverage notice.
+- Pinned dependencies: `backend/requirements.txt`, `frontend/package-lock.json`.
+- Verified on Windows: pytest 4 passed, ruff clean, Vitest 2 passed, production build OK.
+
 ### Changed
 - Scope corrected to a global platform: any country, region, bbox or polygon worldwide;
   full MODIS/VIIRS history. Andhra Pradesh is only an optional example preset.

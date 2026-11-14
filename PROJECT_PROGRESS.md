@@ -46,10 +46,36 @@ enabled. Real data is imported later on the user's Windows PC.
 | ADR-0002 | Coverage registry records the spatial/temporal extent of every ingestion | Separates missing data from valid zero activity worldwide |
 | ADR-0003 | Area API max DAY_RANGE is configurable, default 5 | NASA's page shows 1–10, third-party docs say 1–5; verify against the live service |
 
+## Development workflow
+
+Code is written in the Claude chat sandbox (no package installs, no network) and
+delivered as a git bundle on a feature branch. Verification happens on the Windows
+target: tests, lint, type check, build and startup. Only verified work is merged into
+`main` and tagged.
+
 ## Checkpoints
 
 | Phase | Status | Verification | Commit |
 |---|---|---|---|
-| 0. Foundation — repo, structure, config templates | In progress | Structure created; startup NOT yet verified (blocked) | 525e76c |
-| 0. Global scope — architecture, plan, docs | Done (documentation only) | Docs reviewed; no code yet | b3d71f9 |
-| 1. Foundation code (branch `phase1-foundation`) | Awaiting verification on Windows PC | Backend passes ruff lint/format and byte-compiles in sandbox; pytest, Vitest, typecheck, build and startup NOT yet run (dependencies unavailable in sandbox) | see git log |
+| 0. Repository structure and config templates | Done | Structure and secret exclusions inspected | 525e76c |
+| 0. Global scope — architecture, plan, docs | Done (documentation only) | Docs reviewed | b3d71f9 |
+| 1. Foundation — FastAPI `/api/health`, React/Vite/Tailwind shell | **Done — verified 2026-11-14 on Windows** | See Phase 1 results below | c153be8, 30134a9, merge 682cad9, tag `v0.1-foundation` |
+
+### Phase 1 verification results (Windows 11 PC, 2026-11-14)
+
+Environment: Python 3.12.7 (venv), Node v24.22.1, npm 11.19.1, Git 2.56.0.windows.2.
+
+| Check | Result |
+|---|---|
+| `pytest` (backend) | 4 passed, 1 warning |
+| `ruff check` | All checks passed |
+| `vitest run` (Vitest 5.1.0) | 2 passed |
+| `tsc --noEmit` + `vite build` (Vite 8.3.8) | Succeeded (17 modules, JS 221.74 kB / 69.43 kB gzip) |
+| Backend startup + `GET /api/health` | `status: ok` (reported by user) |
+| Frontend dev server shows backend status | Reported OK by user |
+
+Open item: pytest warning — Starlette reports that using `httpx` with its test client is
+deprecated and suggests `httpx2`. To be investigated before changing test dependencies.
+
+Pinned versions: `backend/requirements.txt` (pip freeze of the verified environment) and
+`frontend/package-lock.json`.

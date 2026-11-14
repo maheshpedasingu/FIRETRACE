@@ -49,4 +49,49 @@ scripts/   setup and bulk-import helpers
 Copy `.env.example` to `backend/.env` and set `FIRMS_MAP_KEY`. Credentials stay on the
 backend and are never exposed to the frontend.
 
-Installation and startup instructions will be added once they have been verified.
+## Installation (Windows PowerShell)
+
+Requirements: Git, Python 3.12, Node.js 24 (npm 11). No GPU or Docker needed.
+
+The pinned versions below were verified on Windows on 2026-11-14. A clean-clone install
+from these exact commands has not yet been re-run; that check is part of final delivery.
+
+```powershell
+git clone https://github.com/maheshpedasingu/FIRETRACE.git
+cd FIRETRACE\backend
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+cd ..\frontend
+npm ci
+```
+
+If `Activate.ps1` is blocked, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once.
+
+## Running
+
+Backend (terminal 1):
+
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+Frontend (terminal 2):
+
+```powershell
+cd frontend
+npm run dev
+```
+
+- Dashboard: http://localhost:5173
+- Health check: http://127.0.0.1:8000/api/health
+- API docs (OpenAPI): http://127.0.0.1:8000/docs
+
+## Tests and checks
+
+```powershell
+cd backend;  python -m pytest -q; python -m ruff check .
+cd ..\frontend; npm test; npm run build
+```
