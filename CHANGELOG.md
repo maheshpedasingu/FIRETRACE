@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- FIRMS CSV parser: canonical hotspot schema, MODIS (Terra/Aqua) and VIIRS (Suomi-NPP, NOAA-20, NOAA-21)
+  identification from documented codes, row validation with reasons, chunked CSV and ZIP
+  streaming, SHA-256 provenance and immutable raw-file store. Docs: `docs/science/ingestion.md`.
 
 ## [0.1-foundation] — 2026-11-14
 ### Added
