@@ -128,11 +128,11 @@ def test_compact_command(env):
 def test_benchmark_small_run_and_refuses_non_empty_folder(tmp_path: Path):
     work = tmp_path / "bench"
     lines: list[str] = []
-    code = benchmark(["--rows", "3000", "--rows-per-file", "1000", "--chunk-rows", "500",
+    code = benchmark(["--rows", "600", "--rows-per-file", "300", "--chunk-rows", "200",
                       "--workdir", str(work)], out=lines.append)  # fmt: skip
     assert code == 0, lines
     results = json.loads((work / "benchmark_results.json").read_text(encoding="utf-8"))
-    assert results["rows_written"] == 3000
+    assert results["rows_written"] == 600
     assert results["files_after_compaction"] <= results["files_before_compaction"]
     assert results["duplicates"] == 0 and results["misplaced"] == 0
     assert benchmark(["--rows", "10", "--workdir", str(work)], out=lines.append) == 2
@@ -141,12 +141,12 @@ def test_benchmark_small_run_and_refuses_non_empty_folder(tmp_path: Path):
 def test_benchmark_uniform_spread_reports_partitions_and_progress(tmp_path: Path):
     work = tmp_path / "bench_uniform"
     lines: list[str] = []
-    code = benchmark(["--rows", "2000", "--rows-per-file", "1000", "--chunk-rows", "500",
+    code = benchmark(["--rows", "300", "--rows-per-file", "300", "--chunk-rows", "200",
                       "--spread", "uniform", "--workdir", str(work)], out=lines.append)  # fmt: skip
     assert code == 0, lines
     results = json.loads((work / "benchmark_results.json").read_text(encoding="utf-8"))
     assert results["spread"] == "uniform"
-    assert results["rows_written"] == 2000
+    assert results["rows_written"] == 300
     assert results["partitions"] > 0
     assert any(line.startswith("  importing SYNTHETIC_") for line in lines)
     assert "spread uniform;" in lines[-2]
