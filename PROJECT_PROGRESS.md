@@ -14,10 +14,12 @@ imported and verified. See `docs/architecture/ARCHITECTURE.md`.
 
 | Platform | Product | Areas | Date range | Source files | Verified |
 |---|---|---|---|---|---|
-| — | — | — | — | — | No real NASA data imported yet |
+| NOAA-20 VIIRS | VIIRS_NOAA20_NRT (C2, NRT) | bbox 76.7,12.6,84.8,19.9 (example area, roughly Andhra Pradesh) | 2026-11-11..2026-11-13 | 1 Area API response | Yes — 462 detections, 0 invalid; inspected (columns, codes, bbox bounds, unique ids); re-run skipped |
+| Terra + Aqua MODIS | MODIS_NRT (C6.1, NRT) | bbox -150,-30,-140,-20 (open South Pacific) | 2026-11-12 | 1 Area API response | Yes — header only, 0 detections, recorded as a covered zero |
 
-Automated tests use only fixtures labelled SYNTHETIC TEST DATA until real FIRMS data is
-imported on the user's Windows PC (MAP_KEY and/or official archive downloads).
+This is the entire imported dataset. FIRETRACE has **no global or historical coverage
+yet**; standard-processing (SP) archives have not been imported. Automated tests still use
+only fixtures labelled SYNTHETIC TEST DATA.
 
 ## Environment assessment (2026-11-14, build sandbox)
 
@@ -44,7 +46,7 @@ enabled. Real data is imported later on the user's Windows PC.
 |---|---|---|
 | ADR-0001 | SQLite for metadata; partitioned Parquet + DuckDB for observations and aggregates | Global 2000–present archive is too large for interactive SQLite row queries on 16 GB CPU-only hardware |
 | ADR-0002 | Coverage registry records the spatial/temporal extent of every ingestion | Separates missing data from valid zero activity worldwide |
-| ADR-0003 | Area API max DAY_RANGE is configurable, default 5 | NASA's page shows 1–10, third-party docs say 1–5; verify against the live service |
+| ADR-0003 | Area API max DAY_RANGE is configurable, default 5 | Verified live 2026-11-14: FIRMS rejects 10 with "Expects [1..5]" (NASA's page shows 1–10) |
 
 ## Development workflow
 
@@ -62,7 +64,8 @@ target: tests, lint, type check, build and startup. Only verified work is merged
 | 1. Foundation — FastAPI `/api/health`, React/Vite/Tailwind shell | **Done — verified 2026-11-14 on Windows** | See Phase 1 results below | c153be8, 30134a9, merge 682cad9, tag `v0.1-foundation` |
 | 2a. FIRMS CSV parser — canonical schema, MODIS/VIIRS adapters, validation, chunked CSV/ZIP, SHA-256 provenance | **Done — verified 2026-11-14 on Windows** | pytest 35 passed (incl. 4 health), ruff clean. First run failed 11 VIIRS tests (pyarrow strings dropped enum identity), fixed in 427cfdf. SYNTHETIC TEST DATA only | 6b16ee9, 427cfdf, merge c23a298 |
 | 2b. Storage — partitioned Parquet store, SQLite metadata, importer (dedupe, invalid records, coverage, crash recovery), CLI | **Done — verified 2026-11-14 on Windows** | pytest 60 passed on first run, ruff clean. SYNTHETIC TEST DATA only | 3f85830, merge e6065b9 |
-| 2c. FIRMS Area API client — availability, date windows, antimeridian split, transaction budget, retries, resumable downloads, import with api_request coverage; `python -m app.cli.fetch_firms` (branch `phase2-api`) | Awaiting verification on Windows PC, then a live test with the user's MAP_KEY | Sandbox: 59 tests pass; 26 tests need httpx/SQLAlchemy/pyarrow (simulated FIRMS server) and run only on Windows | see git log |
+| 2c. FIRMS Area API client — availability, date windows, antimeridian split, transaction budget, retries, resumable downloads, import with api_request coverage; `python -m app.cli.fetch_firms` | **Done — verified 2026-11-14 on Windows + live** | Merged by the user after the Windows test run (expected 89 tests; output not shared). Live: availability table, 462 real NOAA-20 detections imported, empty-window zero, DAY_RANGE limit 5, re-run skipped | eecf2f2, merge b03031c |
+| 2d. Live-test fixes — negative `--bbox` values, ignore `data/downloads/`, live findings documented (branch `phase2-finish`) | Awaiting verification on Windows PC | Sandbox: 63 tests pass | see git log |
 
 ### Phase 1 verification results (Windows 11 PC, 2026-11-14)
 

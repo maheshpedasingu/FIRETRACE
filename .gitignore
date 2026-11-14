@@ -22,6 +22,8 @@ coverage/
 # Data — raw and processed datasets are not committed (provenance is tracked in SQLite + docs)
 data/raw/*
 data/processed/*
+data/downloads/
+data/reference/
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 *.sqlite
