@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 ### Added
+- Storage: partitioned Parquet observation store (sensor/year/month/10° tile) with staging and
+  atomic commit; SQLite metadata (source files, runs, invalid records, coverage); importer with
+  file- and detection-level duplicate prevention and crash recovery; `python -m app.cli.import_archive`.
+  Docs: `docs/architecture/storage.md`.
 - FIRMS CSV parser: canonical hotspot schema, MODIS (Terra/Aqua) and VIIRS (Suomi-NPP, NOAA-20, NOAA-21)
   identification from documented codes, row validation with reasons, chunked CSV and ZIP
   streaming, SHA-256 provenance and immutable raw-file store. Docs: `docs/science/ingestion.md`.
