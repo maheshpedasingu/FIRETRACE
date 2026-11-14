@@ -85,6 +85,15 @@ VIIRS_CONFIDENCE: dict[str, ConfidenceClass] = {
     "high": ConfidenceClass.HIGH,
 }
 
+# Plain-string lookup tables for pandas ``Series.map``. Enum members must not be put
+# into pandas columns: with pyarrow-backed strings (pandas 3 + pyarrow) they are
+# converted to plain ``str``, so identity/isinstance checks on them fail.
+SATELLITE_CODE_VALUES: dict[Sensor, dict[str, str]] = {
+    sensor: {code: platform.value for code, platform in codes.items()}
+    for sensor, codes in SATELLITE_CODES.items()
+}
+VIIRS_CONFIDENCE_VALUES: dict[str, str] = {k: v.value for k, v in VIIRS_CONFIDENCE.items()}
+
 MODIS_CONFIDENCE_NOMINAL_MIN = 30
 MODIS_CONFIDENCE_HIGH_MIN = 80
 

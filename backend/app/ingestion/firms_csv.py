@@ -36,8 +36,8 @@ from app.ingestion.firms_schema import (
     PLATFORM_PRODUCT,
     PLATFORM_SENSOR,
     REQUIRED_COMMON,
-    SATELLITE_CODES,
-    VIIRS_CONFIDENCE,
+    SATELLITE_CODE_VALUES,
+    VIIRS_CONFIDENCE_VALUES,
     ConfidenceClass,
     Platform,
     ProcessingStatus,
@@ -212,18 +212,18 @@ def normalize_chunk(
     flag(time_bad, "invalid acq_time (expected HHMM UTC)")
 
     # Platform: from the satellite column, cross-checked with any declared platform.
-    codes = SATELLITE_CODES[sensor]
+    codes = SATELLITE_CODE_VALUES[sensor]
     satellite = _column(df, "satellite")
     if satellite is not None:
         platform = satellite.str.lower().map(codes)
         flag(platform.isna(), f"unrecognised {sensor} satellite code")
         if context.declared_platform is not None:
             flag(
-                platform.notna() & (platform != context.declared_platform),
+                platform.notna() & (platform != context.declared_platform.value),
                 "satellite code contradicts declared platform",
             )
     elif context.declared_platform is not None:
-        platform = pd.Series(context.declared_platform, index=index, dtype="object")
+        platform = pd.Series(context.declared_platform.value, index=index, dtype="object")
     else:
         platform = pd.Series(None, index=index, dtype="object")
         flag(pd.Series(True, index=index), "no satellite column and no declared platform")
@@ -257,11 +257,7 @@ def normalize_chunk(
             dtype="object",
         )
     else:
-        conf_class = (
-            conf_raw.str.lower()
-            .map(VIIRS_CONFIDENCE)
-            .map(lambda c: c.value if isinstance(c, ConfidenceClass) else None)
-        )
+        conf_class = conf_raw.str.lower().map(VIIRS_CONFIDENCE_VALUES)
         flag(conf_class.isna() & (conf_raw != ""), "invalid VIIRS confidence (l/n/h)")
 
     def optional_number(names: tuple[str, ...], label: str, minimum: float | None = None):
@@ -290,10 +286,9 @@ def normalize_chunk(
 
     version = _column(df, "version")
     version = version if version is not None else _empty_strings(index)
-    lookup = {v: parse_version(v, sensor, context.declared_status) for v in version.unique()}
-    parsed = version.map(lookup)
-    collection = parsed.map(lambda p: p[0])
-    status = parsed.map(lambda p: p[1].value)
+    parsed = {v: parse_version(v, sensor, context.declared_status) for v in version.unique()}
+    collection = version.map({v: c for v, (c, _) in parsed.items()})
+    status = version.map({v: st.value for v, (_, st) in parsed.items()})
     no_version = version == ""
     if no_version.any():
         fallback = (context.declared_status or ProcessingStatus.UNKNOWN).value
@@ -342,9 +337,9 @@ def normalize_chunk(
                 acq_date[ok].dt.strftime("%Y-%m-%d") + " " + acq_time[ok], utc=True
             ),
             "sensor": sensor.value,
-            "platform": platform_ok.map(lambda p: Platform(p).value),
+            "platform": platform_ok,
             "instrument": sensor.value,
-            "product": platform_ok.map(lambda p: PLATFORM_PRODUCT[Platform(p)]),
+            "product": platform_ok.map({p.value: prod for p, prod in PLATFORM_PRODUCT.items()}),
             "collection": collection[ok],
             "collection_version": version[ok],
             "processing_status": status[ok],

@@ -60,7 +60,7 @@ target: tests, lint, type check, build and startup. Only verified work is merged
 | 0. Repository structure and config templates | Done | Structure and secret exclusions inspected | 525e76c |
 | 0. Global scope — architecture, plan, docs | Done (documentation only) | Docs reviewed | b3d71f9 |
 | 1. Foundation — FastAPI `/api/health`, React/Vite/Tailwind shell | **Done — verified 2026-11-14 on Windows** | See Phase 1 results below | c153be8, 30134a9, merge 682cad9, tag `v0.1-foundation` |
-| 2a. FIRMS CSV parser — canonical schema, MODIS/VIIRS adapters, validation, chunked CSV/ZIP, SHA-256 provenance (branch `phase2-ingestion`) | Awaiting verification on Windows PC | Sandbox: 29 parser/provenance tests pass (warnings as errors), ruff clean; tested only with SYNTHETIC TEST DATA; no real FIRMS file parsed yet | see git log |
+| 2a. FIRMS CSV parser — canonical schema, MODIS/VIIRS adapters, validation, chunked CSV/ZIP, SHA-256 provenance (branch `phase2-ingestion`) | Awaiting verification on Windows PC | First Windows run (6b16ee9): 11 VIIRS tests failed — enum values lost in pyarrow-backed string columns. Fixed with plain-string lookups + regression tests. Sandbox: 31 tests pass, ruff clean. SYNTHETIC TEST DATA only; no real FIRMS file parsed yet | see git log |
 
 ### Phase 1 verification results (Windows 11 PC, 2026-11-14)
 

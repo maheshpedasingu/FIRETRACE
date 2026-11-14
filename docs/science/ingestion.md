@@ -62,3 +62,13 @@ Duplicate removal across chunks and files is done in storage (Phase 2b).
    real file.
 3. Throughput in the build sandbox (pandas without pyarrow): about 63,000 rows/s,
    peak memory under 1 GB with 200,000-row chunks. To be re-measured on the Windows target.
+
+## Implementation note: pandas string backends
+
+pandas 3 stores text with pyarrow when it is installed (as on the Windows target) and as
+Python objects otherwise (as in the build sandbox). With pyarrow, values written into a
+text column lose any Python subclass (e.g. enum members become plain `str`). An early
+version relied on enum identity after `Series.map` and rejected every VIIRS row on
+Windows while passing in the sandbox. All lookup tables used with pandas now map to plain
+strings, and a regression test checks this. Tests must be run on the Windows target
+before any parser change is merged.

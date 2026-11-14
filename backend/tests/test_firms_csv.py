@@ -20,7 +20,14 @@ from app.ingestion.firms_csv import (
     iter_firms_file,
     parse_version,
 )
-from app.ingestion.firms_schema import CANONICAL_COLUMNS, Platform, ProcessingStatus, Sensor
+from app.ingestion.firms_schema import (
+    CANONICAL_COLUMNS,
+    SATELLITE_CODE_VALUES,
+    VIIRS_CONFIDENCE_VALUES,
+    Platform,
+    ProcessingStatus,
+    Sensor,
+)
 
 # --- SYNTHETIC TEST DATA ---------------------------------------------------------------
 
@@ -240,6 +247,29 @@ def test_whitespace_around_values_is_tolerated_but_original_kept():
     assert invalid.empty
     assert valid.loc[1, "platform"] == "NOAA-20"
     assert json.loads(valid.loc[1, "source_attributes"])["satellite"] == " N20 "
+
+
+def test_lookup_tables_used_with_pandas_contain_only_plain_strings():
+    # Regression: enum members put into pyarrow-backed string columns come back as
+    # plain str, which made every VIIRS row fail on the Windows target (pandas 3.1.1
+    # + pyarrow). Lookup tables passed to Series.map must therefore be plain str.
+    tables = [VIIRS_CONFIDENCE_VALUES, *SATELLITE_CODE_VALUES.values()]
+    for table in tables:
+        assert all(type(value) is str for value in table.values())
+
+
+def test_categorical_output_columns_are_plain_strings():
+    for text in (SYNTHETIC_MODIS_CSV, SYNTHETIC_VIIRS_CSV):
+        valid, _ = _parse(text)
+        for column in (
+            "sensor",
+            "platform",
+            "product",
+            "confidence_class",
+            "processing_status",
+            "collection",
+        ):
+            assert all(type(v) is str for v in valid[column]), column
 
 
 def test_unsupported_file_type(tmp_path: Path):
