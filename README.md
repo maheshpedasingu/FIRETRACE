@@ -30,6 +30,22 @@ See `docs/architecture/ARCHITECTURE.md` and `docs/IMPLEMENTATION_PLAN.md`.
 - No synthetic data is ever presented as NASA observations. Test fixtures are labelled
   `SYNTHETIC TEST DATA`.
 
+## Screenshots
+
+Real data: 462 NOAA-20 VIIRS NRT detections, 2026-11-11 to 2026-11-13, over the
+example area 76.7, 12.6, 84.8, 19.9 (see `docs/DATA_PROVENANCE.md`). Other satellites
+show "—" or hatched months because no data was imported for them there.
+
+| Overview | Map |
+|---|---|
+| ![Overview: per-platform detections and imported coverage](docs/screenshots/overview.png) | ![Map: VIIRS detections as dots sized by FRP](docs/screenshots/map.png) |
+
+| Calendar | Analytics |
+|---|---|
+| ![Calendar: one row per satellite, partial and missing months marked](docs/screenshots/calendar.png) | ![Analytics: monthly series per satellite](docs/screenshots/analytics-charts.png) |
+
+![Analytics tables: yearly totals, FRP and confidence, experimental anomalies and MODIS–VIIRS comparison](docs/screenshots/analytics-tables.png)
+
 ## Data sources
 
 - **FIRMS Area API** (recent data and keyed backfill): needs a MAP_KEY.
@@ -171,3 +187,8 @@ See `docs/validation/performance.md`.
 cd backend;  python -m pytest -q; python -m ruff check .
 cd ..\frontend; npm test; npm run build
 ```
+
+## License
+
+Code: MIT (see `LICENSE`). NASA FIRMS data is not included in this repository; when you
+use it, follow the NASA FIRMS citation and data-use policy.

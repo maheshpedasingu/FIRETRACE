@@ -1,6 +1,9 @@
 # Changelog
 
-## [Unreleased]
+## [1.0.0] - 2026-11-14
+### Added (release)
+- MIT `LICENSE`; dashboard screenshots in `docs/screenshots/` and the README.
+
 ### Added (Phase 6b)
 - `docs/FINAL_REPORT.md` (spec §18), `docs/DATA_PROVENANCE.md`,
   `docs/science/METHODOLOGY.md`; documentation index in the README.

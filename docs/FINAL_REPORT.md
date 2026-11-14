@@ -84,8 +84,14 @@ a mean of per-sensor anomaly scores, never a sum of raw counts (F); validation r
 On the Windows PC, clean clone of `phase6-delivery` (commit de125b8, 2026-11-14):
 backend pytest **187 passed, 0 warnings**; ruff clean; `npm ci` 0 vulnerabilities;
 Vitest **25 passed**; `tsc --noEmit` + `vite build` succeeded (main chunk 259.95 kB, Map
-and Analytics lazy-loaded). The delivery commit adds one MODIS confidence boundary test
-(188 backend tests); its Windows result is recorded in `PROJECT_PROGRESS.md`.
+and Analytics lazy-loaded); `GET /api/health` ok without a MAP_KEY.
+
+The release adds a MODIS confidence boundary test and three coverage-display tests:
+v1.0.0 is merged only after **188** backend and **28** frontend tests pass on Windows
+with ruff clean and a successful build.
+
+Found and fixed during final screenshots: the Overview showed 0 detections for
+platforms without imported coverage of the area; it now shows "—" (unknown).
 
 All test data is labelled SYNTHETIC TEST DATA.
 
