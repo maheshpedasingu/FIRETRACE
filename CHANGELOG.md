@@ -1,6 +1,14 @@
 # Changelog
 
 ## [Unreleased]
+### Added (Phase 6a)
+- Crash-safe partition compaction with recovery and store verification (`python -m app.cli.compact`).
+- Synthetic performance benchmark in an isolated folder (`python -m app.cli.benchmark`).
+
+### Changed
+- API timestamps from the database carry an explicit UTC offset; the dashboard shows
+  `YYYY-MM-DD HH:MM UTC`. Store readers skip hidden directories.
+
 ### Added (Phase 5b)
 - Dashboard: overview, map with area drawing and sensor-encoded detections, calendar heatmap
   with non-colour state cues, analytics charts, data explorer, ingestion and export pages.

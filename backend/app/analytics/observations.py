@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 
 from app.analytics.series import AreaBBox
+from app.storage.files import visible_parquet_files
 
 
 def observation_files(processed: Path, start: date, end: date, sensors: list[str] | None = None):
@@ -16,7 +17,7 @@ def observation_files(processed: Path, start: date, end: date, sensors: list[str
     if not root.is_dir():
         return []
     files = []
-    for path in sorted(root.rglob("*.parquet")):
+    for path in visible_parquet_files(root):
         sensor, year, month = path.relative_to(root).parts[:3]
         if sensors and sensor not in sensors:
             continue

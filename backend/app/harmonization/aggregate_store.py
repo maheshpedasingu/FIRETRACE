@@ -17,6 +17,7 @@ from pathlib import Path
 import pandas as pd
 
 from app.harmonization.cell_days import OBSERVATION_COLUMNS, aggregate, combine
+from app.storage.files import visible_parquet_files
 
 
 @dataclass(frozen=True)
@@ -39,7 +40,7 @@ class AggregateStore:
         months: dict[MonthKey, list[Path]] = {}
         if not self.observations.is_dir():
             return months
-        for path in self.observations.rglob("*.parquet"):
+        for path in visible_parquet_files(self.observations):
             sensor, year, month = path.relative_to(self.observations).parts[:3]
             months.setdefault(MonthKey(sensor, int(year), int(month)), []).append(path)
         return months

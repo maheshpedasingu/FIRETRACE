@@ -23,6 +23,7 @@ from pathlib import Path
 import pandas as pd
 
 from app.ingestion.firms_schema import CANONICAL_COLUMNS
+from app.storage.files import visible_parquet_files
 from app.storage.partitioning import PartitionKey
 
 TEXT_COLUMNS = (
@@ -91,7 +92,7 @@ class ObservationStore:
         return ids
 
     def all_files(self) -> list[Path]:
-        return sorted(self.final_dir.rglob("*.parquet")) if self.final_dir.is_dir() else []
+        return visible_parquet_files(self.final_dir)
 
     # -- writing ---------------------------------------------------------------------
 

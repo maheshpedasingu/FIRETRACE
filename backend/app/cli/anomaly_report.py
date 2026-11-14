@@ -29,6 +29,7 @@ from app.core.config import Settings, get_settings
 from app.harmonization.aggregate_store import AggregateStore
 from app.harmonization.cross_sensor import match_detections, monthly_calibration
 from app.ingestion.firms_schema import Platform
+from app.storage.files import visible_parquet_files
 
 MODIS = [Platform.TERRA.value, Platform.AQUA.value]
 VIIRS = [Platform.SUOMI_NPP.value, Platform.NOAA_20.value, Platform.NOAA_21.value]
@@ -64,7 +65,7 @@ def read_observations(processed: Path, aoi: AreaBBox, start: date, end: date, se
     columns = ["platform", "latitude", "longitude", "acquisition_datetime_utc", "frp_mw"]
     frames = []
     if root.is_dir():
-        for path in sorted(root.rglob("*.parquet")):
+        for path in visible_parquet_files(root):
             year, month = (int(x) for x in path.relative_to(root).parts[:2])
             if (year, month) < (start.year, start.month) or (year, month) > (end.year, end.month):
                 continue
