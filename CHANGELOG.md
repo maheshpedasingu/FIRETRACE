@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+### Added (Phase 5b)
+- Dashboard: overview, map with area drawing and sensor-encoded detections, calendar heatmap
+  with non-colour state cues, analytics charts, data explorer, ingestion and export pages.
+  Colour encodings validated for colour-vision deficiency. Docs: `docs/architecture/frontend.md`.
+
 ### Added (Phase 5a)
 - REST API covering every endpoint of the specification (§11) with validation, pagination,
   saved AOIs (bbox or Shapely-validated GeoJSON polygons), upload and FIRMS ingestion, CSV /
