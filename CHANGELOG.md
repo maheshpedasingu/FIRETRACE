@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Added
+- FIRMS Area API client and `python -m app.cli.fetch_firms`: availability check, date windows,
+  antimeridian split, transaction budget, retries, resumable downloads, import with `api_request`
+  coverage. Docs: `docs/architecture/firms-api.md`.
 - Storage: partitioned Parquet observation store (sensor/year/month/10° tile) with staging and
   atomic commit; SQLite metadata (source files, runs, invalid records, coverage); importer with
   file- and detection-level duplicate prevention and crash recovery; `python -m app.cli.import_archive`.
