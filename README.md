@@ -129,6 +129,16 @@ python -m app.cli.anomaly_report --bbox 76.7,12.6,84.8,19.9 --start 2012-01-01 -
 Needs several years of imported, fully covered data per platform; otherwise each
 platform is reported as not assessed with the reason. Method: `docs/science/harmonization.md`.
 
+## Exports
+
+```powershell
+python -m app.cli.export hotspots  --bbox 76.7,12.6,84.8,19.9 --start 2026-11-01 --end 2026-11-14 --out ..\exports\hotspots.csv
+python -m app.cli.export calendar  --bbox 76.7,12.6,84.8,19.9 --start 2026-01-01 --end 2026-11-14 --out ..\exports\calendar.csv --grid
+python -m app.cli.export analytics --bbox 76.7,12.6,84.8,19.9 --start 2026-01-01 --end 2026-11-14 --out ..\exports\analytics.json
+```
+
+Each file gets a `.provenance.json` sidecar. See `docs/science/analytics.md`.
+
 ## Tests and checks
 
 ```powershell

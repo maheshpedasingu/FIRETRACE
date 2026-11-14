@@ -1,6 +1,13 @@
 # Changelog
 
 ## [Unreleased]
+### Added (Phase 4)
+- Burning activity calendar with explicit cell states (value / zero / partial / uncovered /
+  missing) and anomaly overlay; yearly totals with year-over-year change for complete years;
+  FRP, confidence and day/night distributions; streamed hotspot CSV, calendar CSV/grid and
+  analytics JSON exports with provenance sidecars (`python -m app.cli.export`).
+- One shared NRT/SP supersession rule for series, calendars, distributions and exports.
+
 ### Added (Phase 3b)
 - Per-platform monthly baselines with robust modified-z anomalies and explicit
   insufficient-history / incomplete-coverage / zero-dispersion states; experimental harmonized
