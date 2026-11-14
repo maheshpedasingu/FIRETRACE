@@ -1,8 +1,9 @@
 # Harmonization methodology
 
-Status: stages A–C implemented (Phase 3a). Stages D–G (baselines, anomalies,
-cross-sensor calibration, validation) follow in Phase 3b. Everything below has been
-tested with SYNTHETIC TEST DATA; real-data checks are listed in `PROJECT_PROGRESS.md`.
+Status: stages A–G implemented (Phases 3a and 3b). Stages D–G are **experimental**:
+they are tested with SYNTHETIC TEST DATA only and have not been validated on real
+multi-year data, because no historical archive has been imported yet. Real-data checks
+are listed in `PROJECT_PROGRESS.md`.
 
 ## Stage A — original measurements are preserved
 
@@ -58,8 +59,63 @@ original row kept as JSON). Harmonization only ever reads them.
   whole (edge effect ≤ one cell width).
 - Platforms are reported side by side and are never added together.
 
+## Stage D — sensor-specific baselines and robust anomalies
+
+`app/analytics/baselines.py`. For each platform, area and calendar month:
+
+- History = the same calendar month in **earlier** years, using only months with
+  `complete` coverage. Partial and missing months never enter a baseline.
+- Statistics: median, MAD = median(|x − median|), 10th/90th percentiles, and the
+  empirical percentile rank of the target value.
+- Anomaly: modified z = 0.6745 · (x − median) / MAD (Iglewicz & Hoaglin, 1993);
+  |z| ≥ 3.5 is labelled *unusually high/low*, otherwise *within normal range*.
+  No other scaling constants are used.
+- Not assessed, with the reason stated: target month not completely covered
+  (`incomplete_coverage`); fewer than `--min-history-years` (default 5) history years
+  (`insufficient_history`); MAD = 0 (`zero_dispersion`, percentile rank still given).
+- Metric selectable: detections, unique cells or cell-days. Each platform is compared
+  only with its own history, so MODIS and VIIRS sensitivity differences do not bias it.
+- Sensor transitions: a platform's baseline only contains years in which that platform
+  operated and was covered; a new satellite (e.g. NOAA-21 from 2023) reports
+  insufficient history until it has enough years.
+
+## Stage E — cross-sensor comparison (experimental)
+
+`app/harmonization/cross_sensor.py`. For each MODIS platform × VIIRS platform pair:
+
+1. **Monthly calibration**: months where both platforms have complete coverage of the
+   area are paired. A single factor VIIRS ≈ k · MODIS is estimated on training years
+   (ratio of sums) and evaluated on held-out validation years (default: the last two
+   overlapping years) with bias, MAE, RMSE, correlation of log(1 + count) and the
+   residuals. Fewer than 12 training or 6 validation months → `unavailable`; no factor
+   is reported. The factor is specific to the area and period.
+2. **Detection matching**: a MODIS detection is matched if a VIIRS detection lies in the
+   same or an adjacent 1 km cell within `--tolerance-minutes` (default 15). Reported:
+   detections per sensor, matched count and fraction, and, for ≥ 3 matched pairs with
+   FRP, the median ratio of summed VIIRS FRP to MODIS FRP and its Spearman correlation.
+   FIRMS contains detections only, so this measures agreement where both detected fire,
+   **not** a detection probability. FRP ratios reflect different pixel sizes (≈1 km vs
+   375 m) and are diagnostics, not a calibration. Matching groups by UTC day, so pairs
+   straddling midnight UTC are not matched.
+
+## Stage F — harmonized activity index (experimental)
+
+HAI = mean over sensors of (mean modified z over that sensor's assessed platforms).
+Averaging within a sensor first stops three VIIRS satellites from outvoting MODIS. The
+report lists contributing sensors and platforms, the MODIS and VIIRS scores, their
+disagreement, and every platform that was not assessed with its reason. HAI is a
+dimensionless anomaly score relative to each platform's own history; it is **not** a
+calibrated physical fire count and does not add raw MODIS and VIIRS counts.
+
+## Stage G — validation report
+
+`python -m app.cli.anomaly_report` writes JSON and Markdown to
+`data/processed/reports/`: coverage per platform, target-month assessment, HAI,
+calibration results with sample sizes and error metrics, matching diagnostics, the full
+monthly series and a list of limitations. The report is labelled EXPERIMENTAL until
+the methods are validated on real multi-year data.
+
 ## Not yet done
 
-Stage D (sensor-specific baselines and robust anomalies), Stage E (MODIS–VIIRS overlap
-matching and calibration), Stage F (harmonized index), Stage G (validation report).
-Polygon AOIs (Shapely) and country/admin boundaries are added with the AOI system.
+Validation on real multi-year archives (needs imported FIRMS history). Polygon AOIs
+(Shapely) and country/admin boundaries are added with the AOI system.

@@ -120,6 +120,15 @@ with coverage status (blank = no data, not zero):
 python -m app.cli.area_summary --bbox 76.7,12.6,84.8,19.9 --start 2026-11-01 --end 2026-11-14
 ```
 
+## Anomaly and validation report (experimental)
+
+```powershell
+python -m app.cli.anomaly_report --bbox 76.7,12.6,84.8,19.9 --start 2012-01-01 --end 2026-10-31 --target 2026-10
+```
+
+Needs several years of imported, fully covered data per platform; otherwise each
+platform is reported as not assessed with the reason. Method: `docs/science/harmonization.md`.
+
 ## Tests and checks
 
 ```powershell

@@ -1,6 +1,12 @@
 # Changelog
 
 ## [Unreleased]
+### Added (Phase 3b)
+- Per-platform monthly baselines with robust modified-z anomalies and explicit
+  insufficient-history / incomplete-coverage / zero-dispersion states; experimental harmonized
+  activity index; MODIS–VIIRS monthly calibration (train/validation) and detection matching;
+  JSON/Markdown validation report via `python -m app.cli.anomaly_report`.
+
 ### Added (Phase 3a)
 - EPSG:6933 equal-area grid (configurable resolution), per-platform cell-day aggregates with
   incremental rebuild, coverage-aware monthly area series, `python -m app.cli.area_summary`.
