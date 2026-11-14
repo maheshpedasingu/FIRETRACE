@@ -47,6 +47,9 @@ class ImportOptions:
     declared_platform: Platform | None = None
     declared_status: ProcessingStatus | None = None
     coverage: list[CoverageSpec] = field(default_factory=list)
+    # Platforms the request covered even if they produced no rows (e.g. MODIS_NRT
+    # covers Terra and Aqua). Defaults to the declared platform, if any.
+    coverage_platforms: tuple[Platform, ...] = ()
     chunk_rows: int = DEFAULT_CHUNK_ROWS
     tile_degrees: int = 10
 
@@ -80,15 +83,19 @@ def _coverage_rows(
     """Coverage rows: declared specs, else archive file names, else 'unknown'.
 
     A coverage row is written for each platform/processing-status actually seen, plus
-    the declared platform if one was given (so a declared platform with zero detections
-    still counts as covered). Platforms not seen and not declared are not claimed.
+    each platform the request covered (``coverage_platforms``, else the declared
+    platform), so a covered platform with zero detections still counts as covered.
+    Platforms neither seen nor covered by the request are not claimed.
     """
     specs = options.coverage or list(archive_specs.values()) or [UNKNOWN_COVERAGE]
     combos = set(observed)
-    if options.declared_platform is not None:
-        status = (options.declared_status or ProcessingStatus.UNKNOWN).value
-        if not any(p == options.declared_platform.value for p, _ in combos):
-            combos.add((options.declared_platform.value, status))
+    platforms = options.coverage_platforms or (
+        (options.declared_platform,) if options.declared_platform is not None else ()
+    )
+    status = (options.declared_status or ProcessingStatus.UNKNOWN).value
+    for platform in platforms:
+        if not any(p == platform.value for p, _ in combos):
+            combos.add((platform.value, status))
     if not combos:
         combos = {(None, None)}  # nothing seen, nothing declared: record extent only
     rows = []

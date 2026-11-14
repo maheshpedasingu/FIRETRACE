@@ -61,7 +61,8 @@ target: tests, lint, type check, build and startup. Only verified work is merged
 | 0. Global scope — architecture, plan, docs | Done (documentation only) | Docs reviewed | b3d71f9 |
 | 1. Foundation — FastAPI `/api/health`, React/Vite/Tailwind shell | **Done — verified 2026-11-14 on Windows** | See Phase 1 results below | c153be8, 30134a9, merge 682cad9, tag `v0.1-foundation` |
 | 2a. FIRMS CSV parser — canonical schema, MODIS/VIIRS adapters, validation, chunked CSV/ZIP, SHA-256 provenance | **Done — verified 2026-11-14 on Windows** | pytest 35 passed (incl. 4 health), ruff clean. First run failed 11 VIIRS tests (pyarrow strings dropped enum identity), fixed in 427cfdf. SYNTHETIC TEST DATA only | 6b16ee9, 427cfdf, merge c23a298 |
-| 2b. Storage — partitioned Parquet store, SQLite metadata, importer (dedupe, invalid records, coverage, crash recovery), CLI (branch `phase2-storage`) | Awaiting verification on Windows PC | Sandbox: 43 tests pass (partitioning, coverage, parser, provenance); 13 import-pipeline tests need SQLAlchemy + pyarrow and run only on Windows | see git log |
+| 2b. Storage — partitioned Parquet store, SQLite metadata, importer (dedupe, invalid records, coverage, crash recovery), CLI | **Done — verified 2026-11-14 on Windows** | pytest 60 passed on first run, ruff clean. SYNTHETIC TEST DATA only | 3f85830, merge e6065b9 |
+| 2c. FIRMS Area API client — availability, date windows, antimeridian split, transaction budget, retries, resumable downloads, import with api_request coverage; `python -m app.cli.fetch_firms` (branch `phase2-api`) | Awaiting verification on Windows PC, then a live test with the user's MAP_KEY | Sandbox: 59 tests pass; 26 tests need httpx/SQLAlchemy/pyarrow (simulated FIRMS server) and run only on Windows | see git log |
 
 ### Phase 1 verification results (Windows 11 PC, 2026-11-14)
 

@@ -99,6 +99,18 @@ python -m app.cli.import_archive E:\path\to\firms_downloads
 
 See `docs/architecture/storage.md` for options (platform, coverage bbox/country and dates).
 
+## Fetching recent data from the FIRMS API
+
+Needs `FIRMS_MAP_KEY` in `backend/.env`. From `backend/`:
+
+```powershell
+python -m app.cli.fetch_firms --availability
+python -m app.cli.fetch_firms --source VIIRS_NOAA20_NRT --bbox 76.7,12.6,84.8,19.9 --start 2026-11-10 --end 2026-11-12
+python -m app.cli.fetch_firms --source MODIS_NRT --world --start 2026-11-12 --end 2026-11-12
+```
+
+The bbox above is only an example area. See `docs/architecture/firms-api.md`.
+
 ## Tests and checks
 
 ```powershell
