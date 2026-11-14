@@ -82,8 +82,8 @@ abstracted so the observation backend can be swapped. New dependencies required:
   `VIIRS_NOAA20_NRT`, `VIIRS_NOAA21_NRT` (and any SP variants the availability
   service reports). The source list is read from `/api/data_availability/`, not hard-coded.
 - **Maximum DAY_RANGE is configurable** (`FIRMS_AREA_MAX_DAY_RANGE`). NASA's API page
-  shows 1–10; some third-party descriptions say 1–5. Default 5 until verified against
-  the live service.
+  shows 1–10, but the live service accepts only 1–5 (verified 2026-11-14). Default 5, matching
+  the live limit.
 - Requests are tiled by date window × spatial tile when a world query would be too large.
 - Transaction budget: FIRMS limits each MAP_KEY (reported as 5000 transactions per
   10 minutes; multi-day requests count as several). A token-bucket limiter, retry with

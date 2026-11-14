@@ -1,7 +1,13 @@
 # Changelog
 
 ## [Unreleased]
+### Fixed
+- `--bbox` values starting with '-' (west/south hemispheres) were read as options.
+- `data/downloads/` and `data/reference/` are now ignored by Git.
+
 ### Added
+- First real data: 462 NOAA-20 VIIRS NRT detections (2026-11-11..13, example area) and a
+  verified zero-detection MODIS window. Live FIRMS findings in `docs/architecture/firms-api.md`.
 - FIRMS Area API client and `python -m app.cli.fetch_firms`: availability check, date windows,
   antimeridian split, transaction budget, retries, resumable downloads, import with `api_request`
   coverage. Docs: `docs/architecture/firms-api.md`.

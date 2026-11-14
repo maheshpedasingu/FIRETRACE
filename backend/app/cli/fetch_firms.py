@@ -23,6 +23,7 @@ from pathlib import Path
 
 import httpx
 
+from app.cli.args import attach_negative_values
 from app.core.config import Settings, get_settings
 from app.database.session import init_db, make_engine, make_session_factory
 from app.ingestion.coverage import bbox_coverage
@@ -85,7 +86,8 @@ def run(
     today: date | None = None,
     out=print,
 ) -> int:
-    args = build_parser().parse_args(argv)
+    raw_argv = sys.argv[1:] if argv is None else argv
+    args = build_parser().parse_args(attach_negative_values(raw_argv))
     settings = settings or get_settings()
     today = today or datetime.now(UTC).date()
 

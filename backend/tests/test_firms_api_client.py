@@ -202,6 +202,45 @@ def test_fetch_command_downloads_imports_and_records_api_coverage(tmp_path: Path
     assert sum("SKIPPED_DUPLICATE_FILE" in line for line in lines2) == 2
 
 
+def test_fetch_command_accepts_negative_bbox_and_records_zero_detection_window(tmp_path: Path):
+    # Live finding 2026-11-14: "--bbox -150,..." was parsed as an option. A MODIS window
+    # over open ocean returned only the header; it must import as covered, 0 written.
+    settings = Settings(
+        _env_file=None,
+        firms_map_key=FAKE_KEY,
+        firms_api_base="https://firms.example/api",
+        database_url=f"sqlite:///{(tmp_path / 'meta.sqlite').as_posix()}",
+        raw_data_dir=str(tmp_path / "raw"),
+        processed_data_dir=str(tmp_path / "processed"),
+    )
+    fake = FakeFirms()
+    lines: list[str] = []
+    argv = [
+        "--source",
+        "MODIS_NRT",
+        "--bbox",
+        "-150,-30,-140,-20",
+        "--start",
+        "2026-11-12",
+        "--end",
+        "2026-11-12",
+    ]
+    code = run(
+        argv,
+        settings=settings,
+        transport=httpx.MockTransport(fake),
+        today=date(2026, 11, 14),
+        out=lines.append,
+    )
+    assert code == 0, lines
+    assert any(p.endswith("/MODIS_NRT/-150,-30,-140,-20/1/2026-11-12") for p in fake.paths)
+    assert any("COMPLETED" in line and "written 0" in line for line in lines)
+    sessions = make_session_factory(make_engine(settings.database_url))
+    with sessions() as s:
+        rows = s.scalars(select(CoverageRecord)).all()
+    assert sorted(r.platform for r in rows) == ["Aqua", "Terra"]
+
+
 def test_fetch_command_rejects_future_end_date(tmp_path: Path):
     settings = Settings(_env_file=None, firms_map_key=FAKE_KEY)
     lines: list[str] = []

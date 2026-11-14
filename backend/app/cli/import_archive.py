@@ -20,6 +20,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
+from app.cli.args import attach_negative_values
 from app.core.config import get_settings
 from app.database.session import init_db, make_engine, make_session_factory
 from app.ingestion.coverage import bbox_coverage, country_coverage
@@ -56,7 +57,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    raw_argv = sys.argv[1:] if argv is None else argv
+    args = build_parser().parse_args(attach_negative_values(raw_argv))
     settings = get_settings()
 
     coverage = []

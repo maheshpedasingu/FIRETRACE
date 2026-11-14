@@ -3,8 +3,9 @@
 Area API request shape (FIRMS API page):
   /api/area/csv/{MAP_KEY}/{SOURCE}/{west,south,east,north | world}/{DAY_RANGE}/{DATE}
   returns data for DATE .. DATE + DAY_RANGE - 1.
-The maximum DAY_RANGE is a setting (FIRMS_AREA_MAX_DAY_RANGE) because published
-values differ (1-10 on NASA's page, 1-5 in third-party descriptions).
+The maximum DAY_RANGE is a setting (FIRMS_AREA_MAX_DAY_RANGE, default 5). NASA's API
+page shows 1-10, but the live service rejected 10 on 2026-11-14 with
+"Invalid day range. Expects [1..5]."
 """
 
 from __future__ import annotations
