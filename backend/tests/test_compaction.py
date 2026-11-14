@@ -136,3 +136,34 @@ def test_benchmark_small_run_and_refuses_non_empty_folder(tmp_path: Path):
     assert results["files_after_compaction"] <= results["files_before_compaction"]
     assert results["duplicates"] == 0 and results["misplaced"] == 0
     assert benchmark(["--rows", "10", "--workdir", str(work)], out=lines.append) == 2
+
+
+def test_benchmark_uniform_spread_reports_partitions_and_progress(tmp_path: Path):
+    work = tmp_path / "bench_uniform"
+    lines: list[str] = []
+    code = benchmark(["--rows", "2000", "--rows-per-file", "1000", "--chunk-rows", "500",
+                      "--spread", "uniform", "--workdir", str(work)], out=lines.append)  # fmt: skip
+    assert code == 0, lines
+    results = json.loads((work / "benchmark_results.json").read_text(encoding="utf-8"))
+    assert results["spread"] == "uniform"
+    assert results["rows_written"] == 2000
+    assert results["partitions"] > 0
+    assert any(line.startswith("  importing SYNTHETIC_") for line in lines)
+    assert "spread uniform;" in lines[-2]
+
+
+def test_clustered_positions_are_concentrated_and_valid():
+    import numpy as np
+
+    from app.cli.benchmark import synthetic_positions
+
+    rng = np.random.default_rng(0)
+    lat, lon = synthetic_positions(rng, 20000, "clustered")
+    assert lat.min() >= -90 and lat.max() <= 90
+    assert lon.min() >= -180 and lon.max() < 180
+    tiles = {(int((a + 90) // 10), int((o + 180) // 10)) for a, o in zip(lat, lon, strict=True)}
+    u_lat, u_lon = synthetic_positions(np.random.default_rng(0), 20000, "uniform")
+    u_tiles = {
+        (int((a + 90) // 10), int((o + 180) // 10)) for a, o in zip(u_lat, u_lon, strict=True)
+    }
+    assert len(tiles) < len(u_tiles)

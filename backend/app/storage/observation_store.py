@@ -126,7 +126,11 @@ class ObservationStore:
         table = pa.Table.from_pandas(coerced, preserve_index=False)
         keys = partition_columns(coerced, tile_degrees)
         groups = keys.groupby(["sensor", "year", "month", "tile"], sort=True).indices
+        # Reorder once so every partition is a contiguous, zero-copy slice of the table.
+        order = np.concatenate([np.asarray(rows, dtype=np.int64) for rows in groups.values()])
+        table = table.take(pa.array(order))
         written = 0
+        offset = 0
         for (sensor, year, month, tile), rows in groups.items():
             key = PartitionKey(str(sensor), int(year), int(month), str(tile))
             directory = self.staging_dir / run_id / key.relative_path()
@@ -134,8 +138,9 @@ class ObservationStore:
             sequence = len(list(directory.glob("*.parquet")))
             path = directory / f"part-{run_id}-{sequence:05d}.parquet"
             tmp = path.with_suffix(".parquet.partial")
-            pq.write_table(table.take(pa.array(np.asarray(rows, dtype=np.int64))), tmp)
+            pq.write_table(table.slice(offset, len(rows)), tmp)
             os.replace(tmp, path)
+            offset += len(rows)
             written += 1
         return written
 

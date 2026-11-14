@@ -60,6 +60,9 @@ class ImportOptions:
     # New rows are buffered per partition and written once this many rows are buffered
     # (and at the end of the file). Fewer, larger Parquet files; memory stays bounded.
     flush_rows: int = DEFAULT_FLUSH_ROWS
+    # Optional progress callback: called after each flush with (rows staged so far,
+    # files staged so far) for this import. Never affects results.
+    progress: Callable[[int, int], None] | None = None
 
 
 @dataclass
@@ -200,13 +203,20 @@ def import_file(
     committed = False
     buffer: dict[PartitionKey, list[pd.DataFrame]] = {}
     buffered = 0
+    staged_rows = 0
+    staged_files = 0
 
     def flush() -> None:
         """Write buffered rows: one staged file per partition."""
-        nonlocal buffered
+        nonlocal buffered, staged_rows, staged_files
         if buffer:
             frames = [frame for parts in buffer.values() for frame in parts]
-            store.stage_many(run_id, pd.concat(frames, ignore_index=True), options.tile_degrees)
+            staged_files += store.stage_many(
+                run_id, pd.concat(frames, ignore_index=True), options.tile_degrees
+            )
+            staged_rows += buffered
+            if options.progress is not None:
+                options.progress(staged_rows, staged_files)
         buffer.clear()
         buffered = 0
 

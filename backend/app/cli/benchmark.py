@@ -4,10 +4,17 @@ Run from the backend folder:
 
     python -m app.cli.benchmark --rows 2000000 --workdir ..\\benchmark_work
 
-Generates random detections (clearly synthetic: global random positions, fixed
-brightness values), then times: import (chunked), compaction, verification, aggregate
-build, and area queries. Reports elapsed time and peak process memory. The workspace is
-never your real data store; delete it yourself afterwards.
+Generates random detections (clearly synthetic, fixed brightness values), then
+times: import (chunked), compaction, verification, aggregate build, and area
+queries. Reports elapsed time and peak process memory. The workspace is never your
+real data store; delete it yourself afterwards.
+
+Spread (--spread):
+  clustered  (default) detections around a fixed set of synthetic hotspot centres, like
+             real fire activity, which concentrates in a limited set of regions.
+  uniform    every detection anywhere on the globe: the worst case for partitioning
+             (about 18 rows per Parquet partition at 200,000 rows), so it measures
+             per-file overhead rather than throughput.
 """
 
 from __future__ import annotations
@@ -35,6 +42,8 @@ from app.storage.observation_store import ObservationStore
 
 START = date(2024, 1, 1)
 DAYS = 730
+HOTSPOTS = 60
+HOTSPOT_SD_DEGREES = 1.5
 
 
 def peak_memory_mb() -> float:
@@ -74,14 +83,32 @@ def peak_memory_mb() -> float:
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
 
 
-def write_synthetic_csv(path: Path, rows: int, seed: int, viirs: bool) -> None:
+def synthetic_positions(
+    rng: np.random.Generator, rows: int, spread: str
+) -> tuple[np.ndarray, np.ndarray]:
+    """SYNTHETIC positions. 'clustered' uses fixed centres (same for every file)."""
+    if spread == "uniform":
+        return rng.uniform(-60, 70, rows), rng.uniform(-180, 180, rows)
+    centres = np.random.default_rng(12345)
+    c_lat = centres.uniform(-40, 60, HOTSPOTS)
+    c_lon = centres.uniform(-180, 180, HOTSPOTS)
+    pick = rng.integers(0, HOTSPOTS, rows)
+    lat = np.clip(c_lat[pick] + rng.normal(0, HOTSPOT_SD_DEGREES, rows), -89.9, 89.9)
+    lon = (c_lon[pick] + rng.normal(0, HOTSPOT_SD_DEGREES, rows) + 180) % 360 - 180
+    return lat, lon
+
+
+def write_synthetic_csv(
+    path: Path, rows: int, seed: int, viirs: bool, spread: str = "clustered"
+) -> None:
     """SYNTHETIC TEST DATA in the FIRMS column layout (not NASA observations)."""
     rng = np.random.default_rng(seed)
     days = rng.integers(0, DAYS, rows)
+    lat, lon = synthetic_positions(rng, rows, spread)
     frame = pd.DataFrame(
         {
-            "latitude": np.round(rng.uniform(-60, 70, rows), 5),
-            "longitude": np.round(rng.uniform(-180, 180, rows), 5),
+            "latitude": np.round(lat, 5),
+            "longitude": np.round(lon, 5),
             ("bright_ti4" if viirs else "brightness"): 330.0,
             "scan": 0.4,
             "track": 0.4,
@@ -108,6 +135,7 @@ def run(argv: list[str] | None = None, out=print) -> int:
     parser.add_argument("--rows-per-file", type=int, default=500_000)
     parser.add_argument("--workdir", type=Path, required=True)
     parser.add_argument("--chunk-rows", type=int, default=200_000)
+    parser.add_argument("--spread", choices=["clustered", "uniform"], default="clustered")
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
 
     work = args.workdir.resolve()
@@ -127,7 +155,11 @@ def run(argv: list[str] | None = None, out=print) -> int:
     init_db(engine)
     sessions = make_session_factory(engine)
     store = ObservationStore(work / "processed")
-    results: dict[str, object] = {"rows_requested": args.rows, "chunk_rows": args.chunk_rows}
+    results: dict[str, object] = {
+        "rows_requested": args.rows,
+        "chunk_rows": args.chunk_rows,
+        "spread": args.spread,
+    }
 
     def timed(name: str, fn):
         t0 = time.perf_counter()
@@ -147,7 +179,7 @@ def run(argv: list[str] | None = None, out=print) -> int:
         for i in range(n_files):
             rows = min(args.rows_per_file, args.rows - i * args.rows_per_file)
             path = work / "inbox" / f"SYNTHETIC_{'viirs' if i % 2 == 0 else 'modis'}_{i:03d}.csv"
-            write_synthetic_csv(path, rows, seed=i, viirs=i % 2 == 0)
+            write_synthetic_csv(path, rows, seed=i, viirs=i % 2 == 0, spread=args.spread)
             files.append(path)
 
     timed("generate_csv", generate)
@@ -156,12 +188,18 @@ def run(argv: list[str] | None = None, out=print) -> int:
     def import_all():
         written = 0
         for path in files:
+
+            def progress(rows: int, staged: int, name: str = path.name) -> None:
+                out(f"  importing {name}: {rows} rows staged in {staged} files")
+
             result = import_file(
                 path,
                 session_factory=sessions,
                 store=store,
                 raw_dir=work / "raw",
-                options=ImportOptions(coverage=coverage, chunk_rows=args.chunk_rows),
+                options=ImportOptions(
+                    coverage=coverage, chunk_rows=args.chunk_rows, progress=progress
+                ),
             )
             written += result.rows_written
         return written
@@ -169,6 +207,7 @@ def run(argv: list[str] | None = None, out=print) -> int:
     written = timed("import", import_all)
     results["rows_written"] = written
     results["files_before_compaction"] = len(store.all_files())
+    results["partitions"] = len(partition_dirs(store))
     timed("compact", lambda: [compact_partition(store, k) for k, _ in partition_dirs(store)])
     results["files_after_compaction"] = len(store.all_files())
     reports = timed("verify", lambda: verify_store(store))
@@ -212,7 +251,8 @@ def run(argv: list[str] | None = None, out=print) -> int:
     results["finished_utc"] = datetime.now(UTC).isoformat(timespec="seconds")
     (work / "benchmark_results.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
     out(
-        f"rows written {written}; files {results['files_before_compaction']} -> "
+        f"spread {args.spread}; rows written {written}; partitions {results['partitions']}; "
+        f"files {results['files_before_compaction']} -> "
         f"{results['files_after_compaction']}; duplicates {results['duplicates']}; "
         f"misplaced {results['misplaced']}; area detections {in_area}"
     )
