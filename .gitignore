@@ -24,6 +24,7 @@ data/raw/*
 data/processed/*
 data/downloads/
 data/reference/
+/exports/
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 *.sqlite

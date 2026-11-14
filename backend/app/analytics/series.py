@@ -94,6 +94,45 @@ def months_between(start: date, end: date) -> list[tuple[int, int]]:
     return months
 
 
+def sp_days_by_platform(
+    in_area: pd.DataFrame, aoi: AreaBBox, start: date, end: date, coverage: list[dict]
+) -> dict[str, set[date]]:
+    """Days on which standard-processing (SP) data should be used instead of NRT.
+
+    A platform-day is an SP day if SP coverage contains the area on that day or any SP
+    record for that platform exists in the area on that day. ``in_area`` holds records
+    already restricted to the area, with platform, processing_status, acquisition_date.
+    """
+    result: dict[str, set[date]] = {}
+    platforms = set(in_area["platform"].unique()) if len(in_area) else set()
+    platforms |= {row["platform"] for row in coverage if row.get("platform")}
+    for platform in platforms:
+        days = covered_days(coverage, aoi, platform, start, end, status="SP")
+        if len(in_area):
+            is_sp = (in_area["platform"] == platform) & (in_area["processing_status"] == "SP")
+            days |= set(pd.to_datetime(in_area.loc[is_sp, "acquisition_date"]).dt.date)
+        result[platform] = days
+    return result
+
+
+def drop_superseded(frame: pd.DataFrame, sp_days: dict[str, set[date]]) -> pd.DataFrame:
+    """Remove non-SP records on platform-days that have SP data (no double counting)."""
+    if frame.empty:
+        return frame
+    dates = pd.to_datetime(frame["acquisition_date"]).dt.date
+    keep = pd.Series(True, index=frame.index)
+    for platform, days in sp_days.items():
+        if not days:
+            continue
+        drop = (
+            (frame["platform"] == platform)
+            & (frame["processing_status"] != "SP")
+            & dates.isin(days)
+        )
+        keep &= ~drop
+    return frame[keep.to_numpy()]
+
+
 def select_cell_days(
     cell_days: pd.DataFrame, aoi: AreaBBox, start: date, end: date, coverage: list[dict]
 ) -> pd.DataFrame:
@@ -105,14 +144,7 @@ def select_cell_days(
     mask &= aoi.contains_points(cell_days["cell_lat"], cell_days["cell_lon"])
     sel = cell_days[mask.to_numpy()].copy()
     sel["acquisition_date"] = pd.to_datetime(sel["acquisition_date"]).dt.date
-    keep = pd.Series(True, index=sel.index)
-    for platform in sel["platform"].unique():
-        sp_days = covered_days(coverage, aoi, platform, start, end, status="SP")
-        is_p = sel["platform"] == platform
-        sp_days |= set(sel.loc[is_p & (sel["processing_status"] == "SP"), "acquisition_date"])
-        drop = is_p & (sel["processing_status"] != "SP") & sel["acquisition_date"].isin(sp_days)
-        keep &= ~drop
-    return sel[keep.to_numpy()]
+    return drop_superseded(sel, sp_days_by_platform(sel, aoi, start, end, coverage))
 
 
 def monthly_series(
