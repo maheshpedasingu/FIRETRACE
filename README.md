@@ -89,6 +89,16 @@ npm run dev
 - Health check: http://127.0.0.1:8000/api/health
 - API docs (OpenAPI): http://127.0.0.1:8000/docs
 
+## Importing FIRMS files
+
+From `backend/` with the virtual environment active:
+
+```powershell
+python -m app.cli.import_archive E:\path\to\firms_downloads
+```
+
+See `docs/architecture/storage.md` for options (platform, coverage bbox/country and dates).
+
 ## Tests and checks
 
 ```powershell

@@ -60,7 +60,8 @@ target: tests, lint, type check, build and startup. Only verified work is merged
 | 0. Repository structure and config templates | Done | Structure and secret exclusions inspected | 525e76c |
 | 0. Global scope — architecture, plan, docs | Done (documentation only) | Docs reviewed | b3d71f9 |
 | 1. Foundation — FastAPI `/api/health`, React/Vite/Tailwind shell | **Done — verified 2026-11-14 on Windows** | See Phase 1 results below | c153be8, 30134a9, merge 682cad9, tag `v0.1-foundation` |
-| 2a. FIRMS CSV parser — canonical schema, MODIS/VIIRS adapters, validation, chunked CSV/ZIP, SHA-256 provenance (branch `phase2-ingestion`) | Awaiting verification on Windows PC | First Windows run (6b16ee9): 11 VIIRS tests failed — enum values lost in pyarrow-backed string columns. Fixed with plain-string lookups + regression tests. Sandbox: 31 tests pass, ruff clean. SYNTHETIC TEST DATA only; no real FIRMS file parsed yet | see git log |
+| 2a. FIRMS CSV parser — canonical schema, MODIS/VIIRS adapters, validation, chunked CSV/ZIP, SHA-256 provenance | **Done — verified 2026-11-14 on Windows** | pytest 35 passed (incl. 4 health), ruff clean. First run failed 11 VIIRS tests (pyarrow strings dropped enum identity), fixed in 427cfdf. SYNTHETIC TEST DATA only | 6b16ee9, 427cfdf, merge c23a298 |
+| 2b. Storage — partitioned Parquet store, SQLite metadata, importer (dedupe, invalid records, coverage, crash recovery), CLI (branch `phase2-storage`) | Awaiting verification on Windows PC | Sandbox: 43 tests pass (partitioning, coverage, parser, provenance); 13 import-pipeline tests need SQLAlchemy + pyarrow and run only on Windows | see git log |
 
 ### Phase 1 verification results (Windows 11 PC, 2026-11-14)
 

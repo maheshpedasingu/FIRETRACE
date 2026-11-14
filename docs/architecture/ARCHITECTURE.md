@@ -62,7 +62,7 @@ millions of detections, which SQLite row storage cannot query interactively on a
 | Store | Technology | Contents |
 |---|---|---|
 | Metadata | SQLite (SQLAlchemy) | source files, checksums, ingestion runs, invalid-record reports, coverage registry, saved AOIs, calibration runs |
-| Observations | Hive-partitioned Parquet: `sensor=/year=/month=/tile=` | canonical hotspot records + preserved source attributes |
+| Observations | Partitioned Parquet: `observations/<sensor>/<YYYY>/<MM>/<tile>/` (plain directory names; partition columns stay inside the files) | canonical hotspot records + preserved source attributes |
 | Aggregates | Parquet | daily and monthly counts per (platform, grid cell): detections, day/night split, FRP sum/max, confidence-class counts |
 | Query engine | DuckDB (in-process, CPU) | predicate- and partition-pruned scans; never loads the archive into RAM |
 
@@ -100,7 +100,7 @@ The Area API is **not** used as the primary global historical source.
 2. **Archive Download Tool exports**: custom country/area/date requests (CSV/JSON/SHP),
    delivered after email authentication. These can include NRT records, which FIRMS
    replaces with standard-quality data after a lag of about 5 months.
-3. **User uploads** of either of the above through the UI or a CLI (`scripts/import_archive.py`
+3. **User uploads** of either of the above through the UI or a CLI (`python -m app.cli.import_archive`
    pointed at a folder of ZIP/CSV files).
 
 Processing (both paths):
