@@ -78,6 +78,8 @@ def calendar_grid(calendar: pd.DataFrame, platform: str) -> pd.DataFrame:
 
     cells = part.assign(cell=[label(r) for r in part.itertuples(index=False)])
     grid = cells.pivot(index="year", columns="month", values="cell")
-    grid = grid.reindex(columns=range(1, 13))
+    # Months absent from the requested range come back as float NaN columns; cast to
+    # object before filling with text (pandas 4 will refuse str fill on float columns).
+    grid = grid.reindex(columns=range(1, 13)).astype(object)
     grid.columns = MONTH_NAMES
-    return grid.fillna("outside range").reset_index()
+    return grid.where(grid.notna(), "outside range").reset_index()
