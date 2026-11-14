@@ -1,8 +1,9 @@
 # FIRMS CSV ingestion — rules and assumptions
 
 Module: `backend/app/ingestion/firms_csv.py` (schema tables in `firms_schema.py`).
-Status: implemented and tested with SYNTHETIC TEST DATA only. No real FIRMS file has been
-parsed yet; the first real import is a required verification step.
+Status: implemented and tested with SYNTHETIC TEST DATA; verified on real FIRMS Area API
+files (one VIIRS NOAA-20 NRT file with 462 detections and one header-only MODIS NRT
+file; see `docs/DATA_PROVENANCE.md`). Yearly archive files have not been imported yet.
 
 ## Inputs
 
@@ -30,7 +31,7 @@ original values are never altered by type inference.
 |---|---|
 | Coordinates | Numeric, lat ∈ [−90, 90], lon ∈ [−180, 180]. Antimeridian values are valid. |
 | Date / time | `acq_date` YYYY-MM-DD; `acq_time` HHMM UTC, leading zeros optional (`5` → 00:05). Stored as UTC. |
-| Confidence | Raw value always kept. VIIRS `l/n/h` → low/nominal/high. MODIS 0–100 → low < 30, nominal 30–79, high ≥ 80. |
+| Confidence | Raw value always kept. VIIRS `l/n/h` → low/nominal/high. MODIS 0–100 % → low 0 ≤ C < 30, nominal 30 ≤ C < 80, high 80 ≤ C ≤ 100 (MODIS C6/C6.1 Active Fire User's Guide v1.0, FAQ 8.4.3, Table 11). |
 | Version | Kept raw. Suffix `NRT`/`RT`/`URT` gives processing status; no suffix = standard processing (SP), as documented by FIRMS. Collection parsed (MODIS 6.1, VIIRS 2); otherwise `unknown`. |
 | FRP, brightness, scan, track | Numeric ≥ 0. **Blank stays missing (NaN), never 0.** |
 | Day/night | `D` / `N` / blank. |
@@ -56,12 +57,13 @@ Duplicate removal across chunks and files is done in storage (Phase 2b).
 
 ## Open verification items
 
-1. MODIS confidence class thresholds come from the MODIS Collection 6 Active Fire
-   User's Guide (Giglio et al.) and have not yet been re-checked against the document.
-2. The satellite codes used inside yearly per-country archive files must be checked on a
-   real file.
-3. Throughput in the build sandbox (pandas without pyarrow): about 63,000 rows/s,
-   peak memory under 1 GB with 200,000-row chunks. To be re-measured on the Windows target.
+1. Done (2026-11-14): MODIS confidence class thresholds checked against the MODIS
+   C6/C6.1 Active Fire Product User's Guide v1.0, Table 11; the implementation matches.
+2. Open: the satellite codes used inside yearly per-country archive files must be
+   checked on a real file.
+3. Done: end-to-end import throughput on the Windows target is in
+   `docs/validation/performance.md` (about 5,600 rows/s at 2 million rows, including
+   duplicate checks and partitioned writes).
 
 ## Implementation note: pandas string backends
 

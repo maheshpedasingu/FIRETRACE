@@ -117,5 +117,5 @@ the methods are validated on real multi-year data.
 
 ## Not yet done
 
-Validation on real multi-year archives (needs imported FIRMS history). Polygon AOIs
-(Shapely) and country/admin boundaries are added with the AOI system.
+Validation on real multi-year archives (needs imported FIRMS history). GeoJSON polygon
+AOIs are supported (Shapely); no country or admin-1 boundary dataset is bundled.

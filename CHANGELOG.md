@@ -1,7 +1,15 @@
 # Changelog
 
 ## [Unreleased]
+### Added (Phase 6b)
+- `docs/FINAL_REPORT.md` (spec §18), `docs/DATA_PROVENANCE.md`,
+  `docs/science/METHODOLOGY.md`; documentation index in the README.
+- Test of MODIS confidence class boundaries (0/29/30/79/80/100).
+
 ### Changed (Phase 6b)
+- MODIS confidence thresholds checked against the MODIS C6/C6.1 Active Fire User's
+  Guide v1.0, Table 11 (implementation unchanged; it already matched).
+- README: status, verified clean-clone install, removed the empty `scripts/` entry.
 - Dev dependency `httpx2` (pinned 2.16.0 with `httpcore2`, `truststore`): Starlette's
   TestClient uses it, removing its httpx deprecation warning. Application code keeps httpx.
 

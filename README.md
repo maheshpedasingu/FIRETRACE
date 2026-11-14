@@ -5,8 +5,10 @@ Earth-observation platform that integrates NASA FIRMS MODIS (Terra, Aqua; C6.1) 
 VIIRS 375 m (Suomi-NPP, NOAA-20, NOAA-21; C2) active-fire detections into a
 sensor-aware, harmonized historical burning-activity calendar for any area on Earth.
 
-> Status: foundation stage. See `PROJECT_PROGRESS.md` for verified checkpoints.
-> Nothing in this repository is claimed to work until it is listed as verified there.
+> Status: feature-complete (v1.0 delivery), verified on Windows. Real data processed so
+> far is small (see `docs/DATA_PROVENANCE.md`); anomaly and cross-sensor analytics are
+> experimental until validated on real multi-year archives. Verified checkpoints:
+> `PROJECT_PROGRESS.md`. Final report: `docs/FINAL_REPORT.md`.
 
 ## Scope
 
@@ -41,8 +43,22 @@ backend/   FastAPI service, ingestion, harmonization, analytics (Python)
 frontend/  React + TypeScript + Vite dashboard
 data/      raw/ (untouched source files), processed/ (partitioned store), samples/
 docs/      architecture, science methodology, API, validation reports
-scripts/   setup and bulk-import helpers
 ```
+
+Bulk work (archive import, API fetch, reports, exports, maintenance) uses the
+command-line tools in `backend/app/cli/`, described below.
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| `docs/FINAL_REPORT.md` | What was built, data processed, validation and test results, limitations |
+| `docs/DATA_PROVENANCE.md` | Data sources, how provenance is kept, real datasets processed |
+| `docs/science/METHODOLOGY.md` | Scientific method overview and known limitations |
+| `docs/science/` (ingestion, harmonization, analytics) | Detailed rules, formulas, references |
+| `docs/architecture/` | Architecture, storage layout, FIRMS API findings, frontend |
+| `docs/api/README.md` | REST API endpoints |
+| `docs/validation/performance.md` | Measured performance |
 
 ## Configuration
 
@@ -53,8 +69,8 @@ backend and are never exposed to the frontend.
 
 Requirements: Git, Python 3.12, Node.js 24 (npm 11). No GPU or Docker needed.
 
-The pinned versions below were verified on Windows on 2026-11-14. A clean-clone install
-from these exact commands has not yet been re-run; that check is part of final delivery.
+The pinned versions below were verified on Windows on 2026-11-14, including a clean-clone
+install with exactly these commands (all tests passed, no warnings).
 
 ```powershell
 git clone https://github.com/maheshpedasingu/FIRETRACE.git
