@@ -48,7 +48,7 @@ def env(tmp_path: Path):
         path = tmp_path / f"SYNTHETIC_{i}.csv"
         path.write_text(HEADER + rows(4, offset=i * 4), encoding="utf-8")
         import_file(path, session_factory=sessions, store=store, raw_dir=tmp_path / "raw",
-                    options=ImportOptions(coverage=[spec], chunk_rows=1))  # fmt: skip
+                    options=ImportOptions(coverage=[spec], chunk_rows=1, flush_rows=1))  # fmt: skip
     return store, tmp_path
 
 
@@ -59,7 +59,7 @@ def all_ids(store: ObservationStore) -> list[str]:
 def test_compaction_merges_files_without_changing_data(env):
     store, tmp_path = env
     before_ids, before_files = all_ids(store), len(store.all_files())
-    assert before_files == 12  # chunk_rows=1 → one file per row
+    assert before_files == 12  # flush_rows=1 forces one file per row (worst case)
     totals_before = AggregateStore(tmp_path / "processed").build_stale()
     for key, _ in partition_dirs(store):
         compact_partition(store, key)

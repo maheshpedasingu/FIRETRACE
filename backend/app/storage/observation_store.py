@@ -85,10 +85,12 @@ class ObservationStore:
 
     def existing_ids(self, key: PartitionKey) -> set[str]:
         """observation_ids already committed to one partition."""
+        import pyarrow.parquet as pq
+
         ids: set[str] = set()
         for path in self.partition_files(key):
-            column = pd.read_parquet(path, columns=["observation_id"])["observation_id"]
-            ids.update(column.astype(str))
+            # pyarrow directly: far cheaper than a pandas round trip per partition
+            ids.update(pq.read_table(path, columns=["observation_id"]).column(0).to_pylist())
         return ids
 
     def all_files(self) -> list[Path]:
@@ -105,6 +107,37 @@ class ObservationStore:
         coerce_for_storage(frame).to_parquet(tmp, index=False, engine="pyarrow")
         os.replace(tmp, path)
         return path
+
+    def stage_many(self, run_id: str, frame: pd.DataFrame, tile_degrees: int = 10) -> int:
+        """Stage rows of many partitions at once: one type conversion and one Arrow table
+        for the whole frame, then one file per partition by row selection.
+
+        Returns the number of files written.
+        """
+        import numpy as np
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        from app.storage.partitioning import partition_columns
+
+        if frame.empty:
+            return 0
+        coerced = coerce_for_storage(frame)
+        table = pa.Table.from_pandas(coerced, preserve_index=False)
+        keys = partition_columns(coerced, tile_degrees)
+        groups = keys.groupby(["sensor", "year", "month", "tile"], sort=True).indices
+        written = 0
+        for (sensor, year, month, tile), rows in groups.items():
+            key = PartitionKey(str(sensor), int(year), int(month), str(tile))
+            directory = self.staging_dir / run_id / key.relative_path()
+            directory.mkdir(parents=True, exist_ok=True)
+            sequence = len(list(directory.glob("*.parquet")))
+            path = directory / f"part-{run_id}-{sequence:05d}.parquet"
+            tmp = path.with_suffix(".parquet.partial")
+            pq.write_table(table.take(pa.array(np.asarray(rows, dtype=np.int64))), tmp)
+            os.replace(tmp, path)
+            written += 1
+        return written
 
     def staged_runs(self) -> list[str]:
         if not self.staging_dir.is_dir():

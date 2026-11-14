@@ -56,8 +56,10 @@ present.
 
 ## Known limitations
 
-- Each chunk writes one Parquet file per partition it touches, so a large archive
-  produces many small files. A compaction step is planned before performance testing.
+- New rows are buffered per partition and written in flushes (`flush_rows`, default
+  500,000): each flush converts types once, builds one Arrow table and writes one file per
+  partition by row selection. Data spread over many partitions still yields one file per
+  partition per flush; `python -m app.cli.compact` merges them (crash-safe, verified).
 - Single-process use only: two imports must not run at the same time.
 - Runs recovered from `committing` have no coverage rows; re-declare coverage if needed.
 
