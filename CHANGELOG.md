@@ -11,6 +11,15 @@
   count as coverage for areas inside that country.
 
 ### Fixed (Phase 7)
+- Every dashboard page was slow on 26 years of real India data (10.7 million
+  detections): each request rescanned ~4,500 files for stale aggregates, re-read every
+  aggregate month, and Overview/Analytics read all detections; pages send several
+  requests at once, so this ran in parallel. Now: a store-generation marker (bumped by
+  imports and compaction) gates the aggregate check, which is locked against concurrent
+  builds; one cached area context per query is shared by all requests; the summary is
+  computed from cell-day aggregates, with FRP median / percentiles from the last 12
+  months of the period (labelled); hotspot totals come from aggregates and reading stops
+  once a page is full.
 - Overview summary crashed (KeyError 'processing_status') once standard-processing data
   existed: it read detections without the column the SP-supersedes-NRT rule needs.
 - A month cut short by the selected period (e.g. 1–7 Nov) was "complete" if every

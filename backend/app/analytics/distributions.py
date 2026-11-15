@@ -47,3 +47,53 @@ def platform_distributions(observations: pd.DataFrame) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows)
+
+
+def distributions_from_cell_days(
+    cell_days: pd.DataFrame, frp_detections: pd.DataFrame | None = None
+) -> pd.DataFrame:
+    """Per-platform distributions from cell-day aggregates (exact counts, FRP sum / mean /
+    max), with FRP median and percentiles from ``frp_detections`` (individual detections,
+    possibly a shorter period) because percentiles cannot be recovered from sums."""
+    if cell_days.empty:
+        return pd.DataFrame()
+    rows = []
+    for platform, g in cell_days.groupby("platform", sort=True):
+        detections = int(g["detections"].sum())
+        frp_values = int(g["frp_count"].sum())
+        frp_sum = float(g["frp_sum_mw"].sum())
+        detail = (
+            pd.to_numeric(
+                frp_detections.loc[frp_detections["platform"] == platform, "frp_mw"],
+                errors="coerce",
+            ).dropna()
+            if frp_detections is not None and len(frp_detections)
+            else pd.Series(dtype="float64")
+        )
+
+        def pct(q: float, values: pd.Series = detail) -> float:
+            return float(values.quantile(q)) if len(values) else np.nan
+
+        rows.append(
+            {
+                "platform": platform,
+                "detections": detections,
+                "frp_values": frp_values,
+                "frp_missing": detections - frp_values,
+                "frp_sum_mw": frp_sum if frp_values else np.nan,
+                "frp_mean_mw": frp_sum / frp_values if frp_values else np.nan,
+                "frp_median_mw": pct(0.5),
+                "frp_p90_mw": pct(0.9),
+                "frp_p99_mw": pct(0.99),
+                "frp_percentile_detections": int(len(detail)),
+                "frp_max_mw": float(g["frp_max_mw"].max()) if frp_values else np.nan,
+                "confidence_low": int(g["confidence_low"].sum()),
+                "confidence_nominal": int(g["confidence_nominal"].sum()),
+                "confidence_high": int(g["confidence_high"].sum()),
+                "confidence_missing": int(g["confidence_missing"].sum()),
+                "day": int(g["day_detections"].sum()),
+                "night": int(g["night_detections"].sum()),
+                "daynight_unknown": int(g["unknown_daynight_detections"].sum()),
+            }
+        )
+    return pd.DataFrame(rows)

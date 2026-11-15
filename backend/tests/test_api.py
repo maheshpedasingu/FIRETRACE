@@ -133,6 +133,35 @@ def test_summary_calendar_and_analytics(client):
     assert {c["status"] for c in comparison["calibration"]} == {"unavailable"}
 
 
+def test_hotspot_totals_from_aggregates_match_a_full_scan(client):
+    upload(client)
+    expected = {  # SYNTHETIC rows: n/D, l/D, h/N
+        (): 3, ("confidence", "high"): 1, ("confidence", "low"): 1,
+        ("daynight", "D"): 2, ("daynight", "N"): 1,
+    }  # fmt: skip
+    for key, total in expected.items():
+        params = AREA | ({key[0]: key[1]} if key else {})
+        body = client.get("/api/hotspots", params=params | {"page_size": 1}).json()
+        assert body["total"] == total, key
+        assert len(body["items"]) == 1
+    both = client.get("/api/hotspots", params=AREA | {"confidence": "high", "daynight": "D"})
+    assert both.json()["total"] == 0  # combined filters: counted by a full scan
+
+
+def test_import_changes_the_store_generation_and_cached_results(client):
+    from app.storage import generation
+
+    processed = Path(client.settings.processed_data_dir)
+    before = generation.current(processed)
+    empty = client.get("/api/hotspots/summary", params=AREA).json()
+    assert empty["total_detections"] == 0
+    upload(client)
+    assert generation.current(processed) != before
+    after = client.get("/api/hotspots/summary", params=AREA).json()
+    assert after["total_detections"] == 3  # not the cached empty result
+    assert after["frp_percentile_period"] == {"start": "2026-11-01", "end": "2026-11-14"}
+
+
 def test_summary_with_standard_processing_data(client):
     """Regression (real India archive): with SP data present, the summary read detections
     without processing_status and the SP-supersedes-NRT step raised KeyError."""

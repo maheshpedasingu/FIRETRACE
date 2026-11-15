@@ -1,0 +1,105 @@
+"""Caching, store generation and aggregate-based statistics (SYNTHETIC TEST DATA only)."""
+
+from __future__ import annotations
+
+import threading
+import time
+from datetime import date
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from app.analytics.distributions import distributions_from_cell_days, platform_distributions
+from app.harmonization.cell_days import aggregate, combine
+from app.services.area_analysis import _ContextCache
+from app.storage import generation
+
+D1, D2 = date(2023, 1, 15), date(2023, 1, 16)
+COLUMNS = ["sensor", "platform", "processing_status", "acquisition_date", "latitude",
+           "longitude", "day_night", "frp_mw", "confidence_class"]  # fmt: skip
+SYNTHETIC = pd.DataFrame(
+    [
+        ("VIIRS", "NOAA-20", "NRT", D1, 15.1000, 80.2000, "D", 5.0, "nominal"),
+        ("VIIRS", "NOAA-20", "NRT", D1, 15.1003, 80.2003, "N", np.nan, "high"),
+        ("VIIRS", "NOAA-20", "NRT", D2, 15.1000, 80.2000, "D", 2.0, "low"),
+        ("VIIRS", "Suomi-NPP", "NRT", D1, 15.1000, 80.2000, "D", 1.0, "nominal"),
+        ("MODIS", "Aqua", "SP", D1, -8.0, -55.0, "", 10.0, ""),
+    ],
+    columns=COLUMNS,
+)
+
+
+def test_generation_marker_changes_on_bump(tmp_path: Path):
+    assert generation.current(tmp_path) == "initial"
+    first = generation.bump(tmp_path)
+    assert generation.current(tmp_path) == first
+    second = generation.bump(tmp_path)
+    assert second != first and generation.current(tmp_path) == second
+    assert not list(tmp_path.glob("*.partial"))
+
+
+def test_distributions_from_cell_days_match_detection_level_counts():
+    cells = combine([aggregate(SYNTHETIC)])
+    fast = distributions_from_cell_days(cells, SYNTHETIC).set_index("platform")
+    exact = platform_distributions(SYNTHETIC).set_index("platform")
+    exact_cols = ["detections", "frp_values", "frp_missing", "frp_sum_mw", "frp_mean_mw",
+                  "frp_median_mw", "frp_p90_mw", "frp_max_mw", "confidence_low",
+                  "confidence_nominal", "confidence_high", "confidence_missing", "day",
+                  "night", "daynight_unknown"]  # fmt: skip
+    pd.testing.assert_frame_equal(
+        fast[exact_cols], exact[exact_cols], check_dtype=False, check_exact=False
+    )
+    assert fast.loc["NOAA-20", "frp_percentile_detections"] == 2
+
+
+def test_frp_percentiles_may_come_from_a_shorter_period():
+    cells = combine([aggregate(SYNTHETIC)])
+    recent = SYNTHETIC[SYNTHETIC["acquisition_date"] == D2]
+    table = distributions_from_cell_days(cells, recent).set_index("platform")
+    assert table.loc["NOAA-20", "detections"] == 3  # counts: whole period
+    assert table.loc["NOAA-20", "frp_median_mw"] == 2.0  # percentiles: D2 only
+    assert np.isnan(table.loc["Suomi-NPP", "frp_median_mw"])
+
+
+def test_context_cache_builds_once_for_concurrent_requests():
+    cache = _ContextCache(size=2)
+    calls = []
+
+    def build():
+        calls.append(1)
+        time.sleep(0.05)
+        return object()
+
+    results = []
+    threads = [threading.Thread(target=lambda: results.append(cache.get(("k",), build)))
+               for _ in range(5)]  # fmt: skip
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(calls) == 1 and len({id(r) for r in results}) == 1
+
+
+def test_context_cache_evicts_oldest():
+    cache = _ContextCache(size=2)
+    a = cache.get(("a",), object)
+    cache.get(("b",), object)
+    cache.get(("c",), object)
+    assert cache.get(("a",), object) is not a  # rebuilt after eviction
+
+
+@pytest.mark.parametrize("module", ["pyarrow"])
+def test_store_commit_and_aggregate_freshness(tmp_path: Path, module):
+    pytest.importorskip(module)
+    from app.harmonization.aggregate_store import AggregateStore
+
+    store = AggregateStore(tmp_path)
+    scans = []
+    store.stale_months = lambda: scans.append(1) or []  # type: ignore[method-assign]
+    store.ensure_fresh("g1")
+    store.ensure_fresh("g1")
+    assert len(scans) == 1  # unchanged generation: no rescan
+    store.ensure_fresh("g2")
+    assert len(scans) == 2

@@ -72,3 +72,16 @@ small files into one, and verifies the whole store: per partition, duplicated
 observation_ids and rows whose sensor/date/position do not match the partition path must
 both be 0. `--verify-only` only reports. Compaction is crash-safe: the merged partition
 is built in a hidden directory and swapped in; every reader skips hidden directories.
+
+## Dashboard on real data (2026-11-15)
+
+With 10.7 million real detections for India (MODIS 2000–2026, VIIRS S-NPP 2012–2026)
+every dashboard page was slow: each API request rescanned ~4,500 observation files for
+stale aggregates and re-read every aggregate month, Overview and Analytics read all
+individual detections, and a page sends several requests at once. Changes (phase 7i):
+store-generation marker gating the aggregate check (with a build lock), one cached area
+context shared by concurrent requests, summary statistics from cell-day aggregates (FRP
+median / percentiles from the last 12 months of the period, labelled in the UI), and
+hotspot totals from aggregates. Timings after the change: to be measured on the
+Windows PC.
+

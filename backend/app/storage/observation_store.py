@@ -23,6 +23,7 @@ from pathlib import Path
 import pandas as pd
 
 from app.ingestion.firms_schema import CANONICAL_COLUMNS
+from app.storage import generation
 from app.storage.files import visible_parquet_files
 from app.storage.partitioning import PartitionKey
 
@@ -161,6 +162,8 @@ class ObservationStore:
             os.replace(staged, target)
             moved += 1
         shutil.rmtree(run_dir)
+        if moved:
+            generation.bump(self.root)
         return moved
 
     def discard_run(self, run_id: str) -> None:

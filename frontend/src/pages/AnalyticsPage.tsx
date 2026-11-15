@@ -99,6 +99,12 @@ export function AnalyticsPage() {
               <table className="w-full text-sm">
                 <caption className="mb-1 text-left text-xs text-[var(--text-secondary)]">
                   FRP is per detected pixel (MW), not burned area; MODIS and VIIRS FRP are not directly comparable.
+                  {s.frp_percentile_period && s.frp_percentile_period.start !== s.period.start && (
+                    <>
+                      {" "}Counts and FRP max cover the whole period; FRP median and p90 use detections from{" "}
+                      {s.frp_percentile_period.start} to {s.frp_percentile_period.end} (last 12 months).
+                    </>
+                  )}
                 </caption>
                 <thead className="text-left text-[var(--text-secondary)]">
                   <tr>

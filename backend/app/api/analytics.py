@@ -10,6 +10,7 @@ from app.analytics.baselines import DEFAULT_MIN_HISTORY_YEARS
 from app.api.deps import AreaParams, Services, ServicesDep, load_coverage, resolve_area
 from app.api.serialize import to_jsonable
 from app.services import area_analysis as aa
+from app.storage import generation
 
 router = APIRouter(tags=["analytics"])
 
@@ -20,7 +21,7 @@ AreaDep = Annotated[AreaParams, Depends()]
 def _ctx(services: Services, area: AreaParams) -> aa.AreaContext:
     aoi = resolve_area(services, area.bbox, area.aoi_id, area.country)
     return aa.context(services.aggregates, load_coverage(services), aoi, area.start, area.end,
-                      area.platforms)  # fmt: skip
+                      area.platforms, generation.current(services.processed))  # fmt: skip
 
 
 @router.get("/hotspots")

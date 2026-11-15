@@ -98,6 +98,8 @@ export interface Summary {
   last_detection_date: string | null;
   platforms: PlatformSummary[];
   distributions: Distribution[];
+  /** Period whose individual detections give the FRP median / percentiles. */
+  frp_percentile_period?: { start: string; end: string };
   note: string;
 }
 

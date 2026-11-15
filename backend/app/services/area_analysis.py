@@ -3,19 +3,22 @@
 from __future__ import annotations
 
 import calendar as _calendar
-from dataclasses import dataclass
+import threading
+from collections import OrderedDict
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 
 import pandas as pd
 
 from app.analytics.baselines import assess, assess_all, harmonized_index
 from app.analytics.calendar import build_calendar
-from app.analytics.distributions import platform_distributions
+from app.analytics.distributions import distributions_from_cell_days
 from app.analytics.observations import iter_observations
 from app.analytics.series import (
     AreaBBox,
     drop_superseded,
     monthly_series,
+    select_cell_days,
     sp_days_by_platform,
 )
 from app.analytics.yearly import yearly_summary
@@ -31,22 +34,87 @@ MATCHING_DAYS = 366
 
 @dataclass
 class AreaContext:
+    """Everything one area/period query needs. ``cell_days`` is already restricted to
+    the area (whole months overlapping the period). The monthly series and SP days are
+    computed once and reused by every endpoint that shares this context."""
+
     aoi: AreaBBox
     start: date
     end: date
     platforms: list[str]
     cell_days: pd.DataFrame
     coverage: list[dict]
+    _series: pd.DataFrame | None = field(default=None, repr=False)
+    _sp_days: dict[str, set[date]] | None = field(default=None, repr=False)
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def in_area_cells(self) -> pd.DataFrame:
-        if self.cell_days.empty:
-            return self.cell_days
-        mask = self.aoi.contains_points(self.cell_days["cell_lat"], self.cell_days["cell_lon"])
-        return self.cell_days[mask.to_numpy()]
+        return self.cell_days
 
     def sp_days(self) -> dict[str, set[date]]:
-        return sp_days_by_platform(self.in_area_cells(), self.aoi, self.start, self.end,
-                                   self.coverage)  # fmt: skip
+        with self._lock:
+            if self._sp_days is None:
+                self._sp_days = sp_days_by_platform(
+                    self.cell_days, self.aoi, self.start, self.end, self.coverage
+                )
+            return self._sp_days
+
+    def monthly(self) -> pd.DataFrame:
+        with self._lock:
+            if self._series is None:
+                self._series = monthly_series(self.cell_days, self.aoi, self.start, self.end,
+                                              self.coverage, self.platforms)  # fmt: skip
+            return self._series.copy()
+
+    def selected_cells(self) -> pd.DataFrame:
+        """Cell-days in the area and period, NRT superseded by SP, selected platforms."""
+        sel = select_cell_days(self.cell_days, self.aoi, self.start, self.end, self.coverage)
+        if len(sel):
+            sel = sel[sel["platform"].isin(self.platforms).to_numpy()]
+        return sel
+
+
+def _area_key(aoi: AreaBBox) -> tuple:
+    geometry = getattr(aoi, "geometry", None)
+    return (aoi.west, aoi.south, aoi.east, aoi.north, aoi.country,
+            geometry.wkb_hex if geometry is not None else None)  # fmt: skip
+
+
+class _ContextCache:
+    """A few recent AreaContexts. Concurrent requests for the same key wait for one
+    computation instead of each loading decades of aggregates."""
+
+    def __init__(self, size: int = 3) -> None:
+        self.size = size
+        self._items: OrderedDict[tuple, AreaContext] = OrderedDict()
+        self._guard = threading.Lock()
+        self._building: dict[tuple, threading.Lock] = {}
+
+    def get(self, key: tuple, build) -> AreaContext:
+        with self._guard:
+            if key in self._items:
+                self._items.move_to_end(key)
+                return self._items[key]
+            lock = self._building.setdefault(key, threading.Lock())
+        with lock:
+            with self._guard:
+                if key in self._items:
+                    return self._items[key]
+            value = build()
+            with self._guard:
+                self._items[key] = value
+                self._items.move_to_end(key)
+                while len(self._items) > self.size:
+                    self._items.popitem(last=False)
+                self._building.pop(key, None)
+            return value
+
+    def clear(self) -> None:
+        with self._guard:
+            self._items.clear()
+
+
+_CONTEXTS = _ContextCache()
 
 
 def context(
@@ -56,13 +124,29 @@ def context(
     start: date,
     end: date,
     platforms: list[str],
+    generation_token: str | None = None,
 ) -> AreaContext:
-    aggregates.build_stale()
-    return AreaContext(aoi, start, end, platforms, aggregates.read(start=start, end=end), coverage)
+    """Area context. With a store generation token (API), aggregates are refreshed only
+    when stored data changed and the context is cached; without one (CLI), it is built
+    fresh after rebuilding any stale aggregates."""
+
+    def build() -> AreaContext:
+        cells = aggregates.read(start=start, end=end)
+        if len(cells):
+            cells = cells[aoi.contains_points(cells["cell_lat"], cells["cell_lon"]).to_numpy()]
+        return AreaContext(aoi, start, end, list(platforms), cells, coverage)
+
+    if generation_token is None:
+        aggregates.build_stale()
+        return build()
+    aggregates.ensure_fresh(generation_token)
+    key = (str(aggregates.root), generation_token, _area_key(aoi), start, end,
+           tuple(platforms))  # fmt: skip
+    return _CONTEXTS.get(key, build)
 
 
 def series(ctx: AreaContext) -> pd.DataFrame:
-    return monthly_series(ctx.cell_days, ctx.aoi, ctx.start, ctx.end, ctx.coverage, ctx.platforms)
+    return ctx.monthly()
 
 
 # Columns every caller needs: platform filter and the SP-supersedes-NRT rule.
@@ -98,6 +182,7 @@ def hotspot_page(
         else [c for c in CANONICAL_COLUMNS if c != "source_attributes"]
     )
     first, last = (page - 1) * page_size, page * page_size
+    total = aggregate_total(ctx, confidence, day_night)
     seen, items = 0, []
     for frame in iter_detections(ctx, processed):
         if confidence:
@@ -110,20 +195,50 @@ def hotspot_page(
         if lo < hi:
             items.extend(frame.iloc[lo:hi][columns].to_dict(orient="records"))
         seen += len(frame)
-    return {"total": seen, "page": page, "page_size": page_size, "items": items}
+        if total is not None and seen >= last:
+            break  # the page is full and the total is known: stop reading
+    return {"total": seen if total is None else total, "page": page,
+            "page_size": page_size, "items": items}  # fmt: skip
+
+
+def aggregate_total(
+    ctx: AreaContext, confidence: list[str] | None, day_night: list[str] | None
+) -> int | None:
+    """Exact number of matching detections from cell-day aggregates, without reading
+    individual detections. None when confidence AND day/night filters are combined
+    (the aggregates hold each marginal count, not the combination)."""
+    if confidence and day_night:
+        return None
+    sel = ctx.selected_cells()
+    if not len(sel):
+        return 0
+    if confidence:
+        return int(sum(sel[f"confidence_{c}"].sum() for c in confidence))
+    if day_night:
+        names = {"D": "day_detections", "N": "night_detections"}
+        return int(sum(sel[names[d]].sum() for d in day_night))
+    return int(sel["detections"].sum())
+
+
+# FRP median / percentiles need individual detections; for long periods only the last
+# FRP_PERCENTILE_DAYS of the period are read (memory and time stay bounded).
+FRP_PERCENTILE_DAYS = 366
 
 
 def summary(ctx: AreaContext, processed) -> dict:
+    """Totals and distributions from cell-day aggregates (exact and fast for decades of
+    data); FRP percentiles from individual detections of the last year of the period."""
     s = series(ctx)
-    frames = list(iter_detections(ctx, processed,
-                                  columns=["platform", "frp_mw", "confidence_class",
-                                           "day_night", "acquisition_date"]))  # fmt: skip
-    detections = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-    cells = ctx.in_area_cells()
+    sel = ctx.selected_cells()
+    frp_start = max(ctx.start, ctx.end - timedelta(days=FRP_PERCENTILE_DAYS - 1))
+    frp_ctx = AreaContext(ctx.aoi, frp_start, ctx.end, ctx.platforms, ctx.cell_days,
+                          ctx.coverage, _sp_days=ctx.sp_days())  # fmt: skip
+    frames = list(iter_detections(frp_ctx, processed, columns=["platform", "frp_mw"]))
+    frp = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
     per_platform = []
     for platform in ctx.platforms:
         part = s[s["platform"] == platform]
-        cell_part = cells[cells["platform"] == platform] if len(cells) else cells
+        cell_part = sel[sel["platform"] == platform] if len(sel) else sel
         per_platform.append(
             {
                 "platform": platform,
@@ -137,9 +252,8 @@ def summary(ctx: AreaContext, processed) -> dict:
             }
         )
     first = last = None
-    if len(detections):
-        dates = pd.to_datetime(detections["acquisition_date"]).dt.date
-        first, last = dates.min(), dates.max()
+    if len(sel):
+        first, last = min(sel["acquisition_date"]), max(sel["acquisition_date"])
     return {
         "area": {
             "west": ctx.aoi.west,
@@ -149,13 +263,15 @@ def summary(ctx: AreaContext, processed) -> dict:
             "country": ctx.aoi.country,
         },  # fmt: skip
         "period": {"start": ctx.start, "end": ctx.end},
-        "total_detections": int(len(detections)),
+        "total_detections": int(sel["detections"].sum()) if len(sel) else 0,
         "first_detection_date": first,
         "last_detection_date": last,
         "platforms": per_platform,
-        "distributions": platform_distributions(detections),
+        "distributions": distributions_from_cell_days(sel, frp),
+        "frp_percentile_period": {"start": frp_start, "end": ctx.end},
         "note": "Detections are satellite active-fire detections, not individual fires. "
-        "Unique cells are counted per platform and never summed across sensors.",
+        "Unique cells are counted per platform and never summed across sensors. FRP "
+        "median and percentiles use individual detections from frp_percentile_period.",
     }
 
 
