@@ -137,7 +137,7 @@ def run(argv: list[str] | None = None, *, settings: Settings | None = None, out=
     # individual detections (bounded memory), as in the API summary.
     frp_start = max(args.start, args.end - timedelta(days=FRP_PERCENTILE_DAYS - 1))
     frames = []
-    columns = ["platform", "frp_mw", "processing_status"]
+    columns = ["platform", "frp_mw", "processing_status", "acquisition_date"]
     for frame in iter_observations(processed, aoi, frp_start, args.end, columns=columns):
         frame = drop_superseded(frame, area.sp_days)
         frames.append(frame[frame["platform"].isin(platforms).to_numpy()])
