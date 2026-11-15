@@ -293,3 +293,43 @@ def test_unsupported_file_type(tmp_path: Path):
     path.write_text("{}")
     with pytest.raises(FirmsFormatError, match="Unsupported file type"):
         list(iter_firms_file(path, _context()))
+
+
+# Layout of FIRMS Archive Download VIIRS S-NPP files (column names and codes as in a real
+# download, 2026-11-15); every value below is SYNTHETIC TEST DATA.
+ARCHIVE_VIIRS_HEADER = (
+    "latitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,instrument,"
+    "confidence,version,bright_t31,frp,daynight"
+)
+
+
+def test_archive_download_viirs_snpp_layout_sp_and_nrt():
+    sp = (
+        ARCHIVE_VIIRS_HEADER + ",type\n"
+        "11.00000,79.00000,335.00,0.40,0.60,2015-03-01,0712,SNPP,SNPP,n,2,299.00,2.50,D,0\n"
+        "12.00000,80.00000,301.00,0.40,0.60,2015-03-01,2001,SNPP,SNPP,h,2,288.00,9.00,N,2\n"
+    )
+    valid, invalid = _parse(sp)
+    assert invalid.empty
+    assert set(valid["sensor"]) == {"VIIRS"} and set(valid["platform"]) == {"Suomi-NPP"}
+    assert set(valid["processing_status"]) == {"SP"}
+    # bright_t31 in a VIIRS archive file is the I5 channel → secondary temperature
+    assert list(valid["brightness_temperature"]) == [335.0, 301.0]
+    assert list(valid["brightness_temperature_secondary"]) == [299.0, 288.0]
+    assert list(valid["hotspot_type"]) == [0, 2]
+
+    nrt = (
+        ARCHIVE_VIIRS_HEADER + "\n"
+        "11.50000,79.50000,330.00,0.40,0.60,2026-08-01,0712,SNPP,SNPP,l,2.0NRT,290.00,1.00,D\n"
+    )
+    valid, invalid = _parse(nrt)
+    assert invalid.empty
+    assert (valid.loc[0, "platform"], valid.loc[0, "processing_status"]) == ("Suomi-NPP", "NRT")
+
+
+def test_unconfirmed_instrument_values_are_still_rejected():
+    text = (
+        ARCHIVE_VIIRS_HEADER + "\n11.0,79.0,330,0.4,0.6,2020-01-01,0712,N20,NOAA20,n,2,290,1.0,D\n"
+    )
+    with pytest.raises(FirmsFormatError, match="Unrecognised instrument value: 'NOAA20'"):
+        _parse(text)

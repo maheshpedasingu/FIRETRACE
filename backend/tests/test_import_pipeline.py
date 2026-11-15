@@ -204,6 +204,30 @@ def test_archive_with_sp_and_nrt_splits_coverage_at_the_last_sp_day(env):
     ]
 
 
+def test_archive_download_zip_with_sp_and_nrt_members(env):
+    """Archive Download layout: fire_archive_* (SP) + fire_nrt_* (NRT) + Readme (SYNTHETIC)."""
+    run, stored, sessions, _, inbox, _ = env
+    head = ("latitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,instrument,"
+            "confidence,version,bright_t31,frp,daynight")  # fmt: skip
+    sp = head + ",type\n11.0,79.0,335,0.4,0.6,2026-07-31,0712,SNPP,SNPP,n,2,299,2.5,D,0\n"
+    nrt = head + "\n11.5,79.5,330,0.4,0.6,2026-08-01,0712,SNPP,SNPP,l,2.0NRT,290,1.0,D\n"
+    archive = inbox / "DL_FIRE_SV-C2_SYNTHETIC.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("fire_archive_SV-C2_SYNTHETIC.csv", sp)
+        zf.writestr("fire_nrt_SV-C2_SYNTHETIC.csv", nrt)
+        zf.writestr("Readme.txt", "SYNTHETIC readme")
+    spec = country_coverage("Synthetic Land", date(2026, 7, 1), date(2026, 8, 31))
+    result = run("unused", path=archive, coverage=[spec])
+    assert (result.status, result.rows_written, result.rows_invalid) == (RunStatus.COMPLETED, 2, 0)
+    assert sorted(stored()["processing_status"]) == ["NRT", "SP"]
+    with sessions() as s:
+        rows = s.scalars(select(CoverageRecord)).all()
+    assert sorted((r.processing_status, r.start_date, r.end_date) for r in rows) == [
+        ("NRT", date(2026, 8, 1), date(2026, 8, 31)),
+        ("SP", date(2026, 7, 1), date(2026, 7, 31)),
+    ]
+
+
 def test_coverage_counts_platforms_even_when_rows_were_already_stored(env):
     run, _, sessions, *_ = env
     run("SYNTHETIC_first.csv", HEADER + ROW_A)

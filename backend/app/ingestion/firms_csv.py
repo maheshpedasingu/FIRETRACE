@@ -31,6 +31,7 @@ from app.ingestion.firms_schema import (
     BRIGHTNESS_COLUMNS,
     CANONICAL_COLUMNS,
     HOTSPOT_TYPES,
+    INSTRUMENT_VALUES,
     MODIS_CONFIDENCE_HIGH_MIN,
     MODIS_CONFIDENCE_NOMINAL_MIN,
     PLATFORM_PRODUCT,
@@ -106,8 +107,8 @@ def detect_sensor(df: pd.DataFrame) -> Sensor:
             raise FirmsFormatError(f"Mixed instruments in one file: {sorted(values)}")
         if values:
             value = values.pop()
-            if value in (Sensor.MODIS, Sensor.VIIRS):
-                return Sensor(value)
+            if value in INSTRUMENT_VALUES:
+                return INSTRUMENT_VALUES[value]
             raise FirmsFormatError(f"Unrecognised instrument value: {value!r}")
     columns = set(df.columns)
     if columns & {"bright_ti4", "bright_ti5"}:
