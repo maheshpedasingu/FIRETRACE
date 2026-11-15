@@ -67,6 +67,7 @@ def test_validation_years_every_third_overlap_year():
     assert validation_years([2014, 2012]) == [2014]
 
 
+@pytest.mark.filterwarnings("error")  # regression: pandas 3.1 deprecates join(lsuffix=...)
 def test_modis_combined_only_where_both_complete():
     s = pd.DataFrame([row("Terra", 2010, 1, 4), row("Aqua", 2010, 1, 6),
                       row("Terra", 2010, 2, 4), row("Aqua", 2010, 2, np.nan, "missing")])  # fmt: skip

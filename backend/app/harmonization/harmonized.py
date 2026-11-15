@@ -90,7 +90,8 @@ def with_modis_combined(series: pd.DataFrame, metric: str) -> pd.DataFrame:
     aqua = series[series["platform"] == "Aqua"].set_index(["year", "month"])
     if terra.empty or aqua.empty:
         return series
-    both = terra.join(aqua, how="inner", lsuffix="_t", rsuffix="_a")
+    # merge(suffixes=...) instead of join(lsuffix/rsuffix), deprecated in pandas 3.1.
+    both = terra.merge(aqua, how="inner", left_index=True, right_index=True, suffixes=("_t", "_a"))
     rows = []
     for (year, month), r in both.iterrows():
         complete = r["coverage_status_t"] == "complete" and r["coverage_status_a"] == "complete"
