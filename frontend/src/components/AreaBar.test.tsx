@@ -1,5 +1,5 @@
 // AreaBar tests. Coordinates are SYNTHETIC TEST DATA.
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AreaBar } from "./AreaBar";
 
@@ -51,6 +51,41 @@ describe("AreaBar", () => {
       platforms: [],
       country: "India",
     });
+  });
+
+  it("saves a point + radius area as a polygon and applies it", async () => {
+    const onApply = vi.fn();
+    const createArea = vi.fn(async (body: { name: string; geojson: unknown }) => ({
+      id: 7, name: body.name, kind: "polygon" as const, bbox: [79.2, 15.4, 80.2, 16.4] as [number, number, number, number],
+      geojson: null, country: null, created_utc: "2026-11-15T00:00:00Z",
+    }));
+    render(<AreaBar query={null} onApply={onApply} savedAois={[]} today={TODAY} createArea={createArea} />);
+    fireEvent.change(screen.getByLabelText("Saved or example area"), { target: { value: "circle" } });
+    fireEvent.change(screen.getByLabelText("Latitude"), { target: { value: "15.9" } });
+    fireEvent.change(screen.getByLabelText("Longitude"), { target: { value: "79.7" } });
+    fireEvent.change(screen.getByLabelText("Radius in km"), { target: { value: "50" } });
+    fireEvent.change(screen.getByLabelText("Start date"), { target: { value: "2026-11-01" } });
+    fireEvent.change(screen.getByLabelText("End date"), { target: { value: "2026-11-14" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    await waitFor(() => expect(onApply).toHaveBeenCalled());
+    expect(createArea.mock.calls[0][0].name).toBe("Circle 15.9000, 79.7000, 50 km");
+    const geojson = createArea.mock.calls[0][0].geojson as { coordinates: number[][][] };
+    expect(geojson.coordinates[0].length).toBe(65);
+    expect(onApply.mock.calls[0][0].area).toEqual({
+      kind: "aoi", id: 7, name: "Circle 15.9000, 79.7000, 50 km", bbox: { west: 79.2, south: 15.4, east: 80.2, north: 16.4 },
+    });
+  });
+
+  it("rejects an invalid radius without saving anything", () => {
+    const createArea = vi.fn();
+    render(<AreaBar query={null} onApply={vi.fn()} savedAois={[]} today={TODAY} createArea={createArea} />);
+    fireEvent.change(screen.getByLabelText("Saved or example area"), { target: { value: "circle" } });
+    fireEvent.change(screen.getByLabelText("Latitude"), { target: { value: "15.9" } });
+    fireEvent.change(screen.getByLabelText("Longitude"), { target: { value: "79.7" } });
+    fireEvent.change(screen.getByLabelText("Radius in km"), { target: { value: "5000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(screen.getByRole("alert").textContent).toContain("Radius must be between 1 and 1000 km");
+    expect(createArea).not.toHaveBeenCalled();
   });
 
   it("rejects future end dates and notes antimeridian crossing", () => {

@@ -166,6 +166,14 @@ with coverage status (blank = no data, not zero):
 python -m app.cli.area_summary --bbox 76.7,12.6,84.8,19.9 --start 2026-11-01 --end 2026-11-14
 ```
 
+## Dashboard
+
+Choose an area (example, saved area, bounding box, or **Point + radius**), a period and
+optional satellites. Pages: Overview (totals and imported coverage), Map, Calendar
+(**Harmonized** one-calendar view in MODIS- or VIIRS-equivalent units, or one calendar
+per satellite), Analytics, Data explorer, Ingestion and Export. Calendars and charts can
+be downloaded as PNG or SVG; data as CSV with provenance.
+
 ## Checking time and memory for a large area
 
 Before opening the dashboard on a very large area or long period, measure it from the

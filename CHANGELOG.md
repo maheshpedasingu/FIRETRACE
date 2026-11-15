@@ -9,6 +9,13 @@
 - Latest month vs the median of earlier complete years, and the typical fire season.
 - Dashboard "Inside country" field and an India example, so FIRMS country downloads
   count as coverage for areas inside that country.
+- Download the harmonized and per-satellite calendars and the monthly charts as PNG or
+  SVG; images are built from the data with title, area, period, units, legend and the
+  NASA FIRMS credit.
+- "Point + radius (km)" area: a latitude/longitude and a radius become a saved circle
+  polygon (64 vertices on the sphere; circles crossing 180° or reaching a pole are
+  refused with a message).
+- `python -m app.cli.area_profile`: time and peak memory of each dashboard step.
 
 ### Fixed (Phase 7)
 - Out of memory: opening the dashboard on India 2000–2026 made the user's laptop stop

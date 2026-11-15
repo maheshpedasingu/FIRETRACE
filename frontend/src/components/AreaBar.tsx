@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import {
   EXAMPLE_AREAS,
   bboxText,
+  circleName,
+  circlePolygon,
   crossesAntimeridian,
   daysBefore,
   isoDay,
@@ -10,6 +12,7 @@ import {
   type AreaQuery,
 } from "../lib/area";
 import { PLATFORM_COLORS, PLATFORM_ORDER } from "../lib/colors";
+import { createAOI } from "../services/api";
 import type { SavedAOI } from "../types/api";
 
 interface Props {
@@ -17,10 +20,12 @@ interface Props {
   onApply: (q: AreaQuery) => void;
   savedAois: SavedAOI[];
   today?: Date;
+  /** Saves a polygon area (injectable for tests). */
+  createArea?: (body: { name: string; geojson: unknown }) => Promise<SavedAOI>;
 }
 
 /** Area, period and platform filters, in one row above every view. */
-export function AreaBar({ query, onApply, savedAois, today = new Date() }: Props) {
+export function AreaBar({ query, onApply, savedAois, today = new Date(), createArea = createAOI }: Props) {
   const todayIso = isoDay(today);
   const [bbox, setBbox] = useState(
     query?.area.kind === "bbox" ? bboxText(query.area.bbox) : "",
@@ -30,6 +35,11 @@ export function AreaBar({ query, onApply, savedAois, today = new Date() }: Props
   const [end, setEnd] = useState(query?.end ?? todayIso);
   const [platforms, setPlatforms] = useState<string[]>(query?.platforms ?? []);
   const [country, setCountry] = useState(query?.country ?? "");
+  const [circleMode, setCircleMode] = useState(false);
+  const [lat, setLat] = useState("");
+  const [lon, setLon] = useState("");
+  const [radius, setRadius] = useState("50");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Follow external changes (e.g. a bbox drawn on the map).
@@ -45,9 +55,15 @@ export function AreaBar({ query, onApply, savedAois, today = new Date() }: Props
     setEnd(query.end);
     setPlatforms(query.platforms);
     setCountry(query.country ?? "");
+    setCircleMode(false); // an applied circle is a saved area from now on
   }, [query]);
 
   function choosePreset(value: string) {
+    setCircleMode(value === "circle");
+    if (value === "circle") {
+      setAoiId(null);
+      return;
+    }
     if (value.startsWith("aoi:")) {
       setAoiId(Number(value.slice(4)));
       return;
@@ -60,10 +76,30 @@ export function AreaBar({ query, onApply, savedAois, today = new Date() }: Props
     }
   }
 
+  async function submitCircle(extra: { country?: string }) {
+    const circle = circlePolygon(Number(lat), Number(lon), Number(radius));
+    if (lat.trim() === "" || lon.trim() === "" || !circle.ok) {
+      return setError(circle.ok ? "Enter latitude and longitude" : circle.error);
+    }
+    const name = circleName(Number(lat), Number(lon), Number(radius));
+    setBusy(true);
+    try {
+      const saved = savedAois.find((a) => a.name === name) ?? (await createArea({ name, geojson: circle.value }));
+      const [west, south, east, north] = saved.bbox;
+      setError(null);
+      onApply({ area: { kind: "aoi", id: saved.id, name: saved.name, bbox: { west, south, east, north } }, start, end, platforms, ...extra });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function submit(event: FormEvent) {
     event.preventDefault();
     const dates = validateDates(start, end, todayIso);
     if (!dates.ok) return setError(dates.error);
+    if (circleMode) return void submitCircle(country.trim() ? { country: country.trim() } : {});
     if (aoiId !== null) {
       const saved = savedAois.find((a) => a.id === aoiId);
       if (!saved) return setError("Saved area not found");
@@ -94,10 +130,11 @@ export function AreaBar({ query, onApply, savedAois, today = new Date() }: Props
         <select
           aria-label="Saved or example area"
           className="field"
-          value={aoiId !== null ? `aoi:${aoiId}` : ""}
+          value={aoiId !== null ? `aoi:${aoiId}` : circleMode ? "circle" : ""}
           onChange={(e) => choosePreset(e.target.value)}
         >
           <option value="">Custom bbox…</option>
+          <option value="circle">Point + radius (km)…</option>
           {savedAois.length > 0 && (
             <optgroup label="Saved areas">
               {savedAois.map((a) => (
@@ -116,6 +153,22 @@ export function AreaBar({ query, onApply, savedAois, today = new Date() }: Props
           </optgroup>
         </select>
       </label>
+      {circleMode ? (
+        <>
+          <label className="flex flex-col gap-1">
+            <span className="text-[var(--text-secondary)]">Latitude</span>
+            <input aria-label="Latitude" className="field w-24 font-mono" placeholder="e.g. 15.9" value={lat} onChange={(e) => setLat(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[var(--text-secondary)]">Longitude</span>
+            <input aria-label="Longitude" className="field w-24 font-mono" placeholder="e.g. 79.7" value={lon} onChange={(e) => setLon(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[var(--text-secondary)]">Radius (km)</span>
+            <input aria-label="Radius in km" className="field w-20 font-mono" value={radius} onChange={(e) => setRadius(e.target.value)} />
+          </label>
+        </>
+      ) : (
       <label className="flex flex-col gap-1">
         <span className="text-[var(--text-secondary)]">Bounding box (west,south,east,north)</span>
         <input
@@ -127,6 +180,7 @@ export function AreaBar({ query, onApply, savedAois, today = new Date() }: Props
           onChange={(e) => setBbox(e.target.value)}
         />
       </label>
+      )}
       <label className="flex flex-col gap-1" title="Only for country downloads: enter the country the WHOLE area lies inside (e.g. India). Its imported coverage then counts for this area. Leave empty otherwise.">
         <span className="text-[var(--text-secondary)]">Inside country (optional)</span>
         <input
@@ -156,10 +210,10 @@ export function AreaBar({ query, onApply, savedAois, today = new Date() }: Props
         ))}
         <span className="text-xs text-[var(--text-secondary)]">(none = all)</span>
       </fieldset>
-      <button type="submit" className="btn-primary">
-        Apply
+      <button type="submit" className="btn-primary" disabled={busy}>
+        {busy ? "Saving area…" : "Apply"}
       </button>
-      {aoiId === null && parsed.ok && crossesAntimeridian(parsed.value) && (
+      {!circleMode && aoiId === null && parsed.ok && crossesAntimeridian(parsed.value) && (
         <span className="text-xs text-[var(--text-secondary)]">Crosses the 180° meridian.</span>
       )}
       {error && (

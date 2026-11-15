@@ -4,6 +4,7 @@ import { HarmonizedCalendar } from "../calendar/HarmonizedCalendar";
 import { AsyncView } from "../components/Status";
 import { useAsync } from "../hooks/useAsync";
 import { fetchCalendar, fetchHarmonizedCalendar } from "../services/api";
+import { describeQuery } from "../lib/area";
 import { useArea } from "../state/AreaContext";
 import type { HarmonizedReference, Metric } from "../types/api";
 
@@ -75,7 +76,7 @@ export function CalendarPage() {
             the per-satellite calendars remain the original record. Hatched months have no data — unknown, not zero.
           </p>
           <AsyncView state={harmonized} what="the harmonized calendar">
-            {(data) => <HarmonizedCalendar data={data} />}
+            {(data) => <HarmonizedCalendar data={data} subtitle={query ? describeQuery(query) : ""} />}
           </AsyncView>
         </>
       ) : (
@@ -86,7 +87,7 @@ export function CalendarPage() {
             only with its own history and are experimental.
           </p>
           <AsyncView state={perPlatform} what="the calendar">
-            {(data) => <CalendarHeatmap cells={data.cells} metric={metric} />}
+            {(data) => <CalendarHeatmap cells={data.cells} metric={metric} subtitle={query ? describeQuery(query) : ""} />}
           </AsyncView>
         </>
       )}

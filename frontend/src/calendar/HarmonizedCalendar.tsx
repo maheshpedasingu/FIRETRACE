@@ -4,6 +4,8 @@ import { STATE_LABELS, binEdges, cellStyle } from "../lib/colors";
 import { compareWithHistory, latestCompleteMonth, latestMonth, monthlyClimatology, sourceTag } from "../lib/harmonized";
 import type { ConversionFit, HarmonizedCalendar as HarmonizedData, HarmonizedCell } from "../types/api";
 import { CalendarLegend } from "./CalendarHeatmap";
+import { DownloadImage } from "../components/DownloadImage";
+import { calendarSvg, fileSlug } from "../lib/exportImage";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const HATCH = "repeating-linear-gradient(45deg, transparent 0 4px, #383835 4px 6px)";
@@ -114,7 +116,7 @@ function Climatology({ cells, unit }: { cells: HarmonizedCell[]; unit: string })
 }
 
 /** One harmonized years × months calendar with the conversion fits beneath it. */
-export function HarmonizedCalendar({ data }: { data: HarmonizedData }) {
+export function HarmonizedCalendar({ data, subtitle = "" }: { data: HarmonizedData; subtitle?: string }) {
   const [selected, setSelected] = useState<HarmonizedCell | null>(null);
   const cells = data.cells;
   const edges = useMemo(() => binEdges(cells.map((c) => c.value ?? 0)), [cells]);
@@ -132,7 +134,31 @@ export function HarmonizedCalendar({ data }: { data: HarmonizedData }) {
         N21 = NOAA-20 / NOAA-21. ≈ marks a value converted from another sensor (uncertainty in the fits table).
       </p>
       <section aria-label="Harmonized activity calendar" className="mb-6">
-        <h3 className="mb-2 font-medium">Harmonized — {unit}</h3>
+        <h3 className="mb-2 flex flex-wrap items-center gap-3 font-medium">
+          <span>Harmonized — {unit}</span>
+          <DownloadImage
+            label="harmonized calendar"
+            filename={`firetrace_harmonized_calendar_${data.reference}_${fileSlug(subtitle)}`}
+            build={() =>
+              calendarSvg({
+                title: `Harmonized burning activity calendar — ${unit}`,
+                subtitle,
+                edges,
+                cells: cells.map((c) => ({
+                  year: c.year,
+                  month: c.month,
+                  state: c.state,
+                  value: c.value,
+                  tag: sourceTag(c.source),
+                  converted: c.converted,
+                  anomaly: c.anomaly,
+                })),
+                footer:
+                  "EXPERIMENTAL: months from other sensors converted with fitted factors (≈). Sources: T+A Terra+Aqua, T Terra, A Aqua, S Suomi-NPP, N20/N21 NOAA-20/21.",
+              })
+            }
+          />
+        </h3>
         <table className="border-separate border-spacing-[2px] text-xs">
           <caption className="sr-only">Harmonized {unit} by year and month</caption>
           <thead>

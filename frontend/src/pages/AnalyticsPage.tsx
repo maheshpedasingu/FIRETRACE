@@ -10,6 +10,7 @@ import {
   fetchSummary,
   fetchYearly,
 } from "../services/api";
+import { describeQuery } from "../lib/area";
 import { useArea } from "../state/AreaContext";
 import type { Metric, Platform } from "../types/api";
 
@@ -33,9 +34,9 @@ export function AnalyticsPage() {
         <AsyncView state={monthly} what="monthly analytics">
           {(d) => (
             <div className="grid gap-4 lg:grid-cols-2">
-              <MonthlyChart rows={d.months} field="detections" title="Detections per month" />
-              <MonthlyChart rows={d.months} field="unique_cells" title="Unique active 1 km cells per month" />
-              <MonthlyChart rows={d.months} field="frp_sum_mw" title="Summed FRP per month (MW)" />
+              <MonthlyChart rows={d.months} field="detections" title="Detections per month" subtitle={query ? describeQuery(query) : ""} />
+              <MonthlyChart rows={d.months} field="unique_cells" title="Unique active 1 km cells per month" subtitle={query ? describeQuery(query) : ""} />
+              <MonthlyChart rows={d.months} field="frp_sum_mw" title="Summed FRP per month (MW)" subtitle={query ? describeQuery(query) : ""} />
             </div>
           )}
         </AsyncView>
