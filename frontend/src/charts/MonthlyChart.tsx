@@ -19,7 +19,10 @@ export type MonthlyField = "detections" | "unique_cells" | "frp_sum_mw";
 /** Pivot monthly rows to one record per month with a column per platform (null = missing). */
 export function pivotMonthly(rows: MonthRow[], field: MonthlyField) {
   const months = [...new Set(rows.map((r) => `${r.year}-${String(r.month).padStart(2, "0")}`))].sort();
-  const platforms = PLATFORM_ORDER.filter((p) => rows.some((r) => r.platform === p));
+  // Only satellites with at least one value in the period (no empty legend entries).
+  const platforms = PLATFORM_ORDER.filter((p) =>
+    rows.some((r) => r.platform === p && r[field] !== null && r[field] !== undefined),
+  );
   const data = months.map((month) => {
     const record: Record<string, string | number | null> = { month };
     for (const p of platforms) {

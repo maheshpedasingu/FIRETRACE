@@ -124,7 +124,8 @@ export function wrapChartSvg(
   const width = Math.round(innerWidth) + 48;
   const height = Math.round(innerHeight) + 120 + (legend.length ? 24 : 0);
   const chartTop = legend.length ? 96 : 72;
-  const body = inner.replace(/^<svg/, `<svg x="24" y="${chartTop}"`);
+  // Fix the font in the file: the page's CSS font does not travel with the SVG.
+  const body = inner.replace(/^<svg/, `<svg x="24" y="${chartTop}" font-family="Segoe UI, Roboto, Arial, sans-serif"`);
   let x = 24;
   const legendSvg = legend
     .map(({ label, color }) => {

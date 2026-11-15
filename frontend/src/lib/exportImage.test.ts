@@ -44,7 +44,7 @@ describe("helpers", () => {
   });
   it("wraps chart SVG with a background, title and credit", () => {
     const { svg, width, height } = wrapChartSvg('<svg width="400" height="200"></svg>', 400, 200, "Detections", "per month");
-    expect(svg.includes('<svg x="24" y="72" width="400"')).toBe(true);
+    expect(svg.includes('<svg x="24" y="72" font-family="Segoe UI, Roboto, Arial, sans-serif" width="400"')).toBe(true);
     expect(svg.includes(">Detections<") && svg.includes("NASA FIRMS")).toBe(true);
     expect([width, height]).toEqual([448, 320]);
   });
@@ -52,7 +52,7 @@ describe("helpers", () => {
     const legend = [{ label: "Aqua", color: "#d95926" }, { label: "Suomi-NPP", color: "#199e70" }];
     const { svg, height } = wrapChartSvg('<svg width="400" height="200"></svg>', 400, 200, "D", "s", legend);
     expect(svg.includes('fill="#d95926"') && svg.includes(">Suomi-NPP<")).toBe(true);
-    expect(svg.includes('<svg x="24" y="96"')).toBe(true);
+    expect(svg.includes('<svg x="24" y="96" font-family=')).toBe(true);
     expect(height).toBe(344);
   });
 });
