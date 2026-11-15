@@ -132,6 +132,56 @@ export interface CalendarCell {
   anomaly_status: string | null;
 }
 
+export type HarmonizedReference = "modis" | "viirs";
+
+export interface HarmonizedCell {
+  platform: "Harmonized";
+  year: number;
+  month: number;
+  state: CellState;
+  value: number | null;
+  coverage_status: CoverageStatus;
+  days_covered: number;
+  days_in_range: number;
+  source: string | null;
+  source_value: number | null;
+  factor: number | null;
+  relative_uncertainty: number | null;
+  converted: boolean;
+  note: string;
+  modified_z: number | null;
+  anomaly: string | null;
+  anomaly_status: string | null;
+}
+
+export interface ConversionFit {
+  source: string;
+  reference: string;
+  status: "reference" | "estimated" | "unavailable";
+  reason: string;
+  factor: number | null;
+  n_train: number;
+  n_validation: number;
+  train_years: string;
+  validation_years: string;
+  bias: number | null;
+  mae: number | null;
+  rmse: number | null;
+  relative_rmse: number | null;
+  log_correlation: number | null;
+}
+
+export interface HarmonizedCalendar {
+  status: string;
+  reference: HarmonizedReference;
+  reference_source: string;
+  unit: string;
+  metric: Metric;
+  priority: string[];
+  fits: ConversionFit[];
+  cells: HarmonizedCell[];
+}
+
 export interface YearRow {
   platform: Platform;
   year: number;

@@ -65,6 +65,20 @@ def calendar(
     return to_jsonable({"metric": metric, "cells": table})
 
 
+@router.get("/calendar/harmonized")
+def harmonized_calendar(
+    services: ServicesDep,
+    area: AreaDep,
+    reference: Literal["modis", "viirs"] = "modis",
+    metric: Metric = "detections",
+    min_history_years: Annotated[int, Query(ge=1, le=30)] = DEFAULT_MIN_HISTORY_YEARS,
+) -> dict:
+    """EXPERIMENTAL: one MODIS–VIIRS calendar in a reference sensor's units, with the
+    conversion fits (factor, validation error) that produced it."""
+    result = aa.harmonized_calendar(_ctx(services, area), reference, metric, min_history_years)
+    return to_jsonable(result)
+
+
 @router.get("/analytics/monthly")
 def monthly(services: ServicesDep, area: AreaDep) -> dict:
     return to_jsonable({"months": aa.series(_ctx(services, area))})

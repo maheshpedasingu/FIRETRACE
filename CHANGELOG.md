@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+### Added (Phase 7, harmonized calendar)
+- Harmonized burning activity calendar (`GET /api/calendar/harmonized`, dashboard
+  Calendar → "Harmonized (one calendar)", CSV export with provenance): one continuous
+  series in MODIS (Terra+Aqua)- or Suomi-NPP-equivalent units, with per-month source,
+  conversion factor, validation uncertainty, history comparison and the conversion fits.
+- Latest month vs the median of earlier complete years, and the typical fire season.
+
+### Fixed (Phase 7)
+- Coverage no longer starts before a platform's first FIRMS record (e.g. Aqua before
+  4 July 2002), which would otherwise show false real zeros for archive requests that
+  reach back before a satellite's launch.
+
 ## [1.0.0] - 2026-11-14
 ### Added (release)
 - MIT `LICENSE`; dashboard screenshots in `docs/screenshots/` and the README.

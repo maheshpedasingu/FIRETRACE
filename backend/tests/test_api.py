@@ -133,6 +133,22 @@ def test_summary_calendar_and_analytics(client):
     assert {c["status"] for c in comparison["calibration"]} == {"unavailable"}
 
 
+def test_harmonized_calendar_never_converts_without_a_fitted_factor(client):
+    upload(client)  # NOAA-20 only: no overlap with MODIS, so no conversion factor exists
+    body = client.get("/api/calendar/harmonized", params=AREA).json()
+    assert body["status"] == "EXPERIMENTAL"
+    assert body["reference_source"] == "MODIS (Terra+Aqua)"
+    n20 = next(f for f in body["fits"] if f["source"] == "NOAA-20")
+    assert n20["status"] == "unavailable" and n20["factor"] is None
+    (nov,) = body["cells"]
+    assert (nov["year"], nov["month"], nov["state"], nov["value"]) == (2026, 11, "missing", None)
+    assert "NOAA-20" in nov["note"] and "no conversion factor" in nov["note"]
+    viirs = client.get("/api/calendar/harmonized", params=AREA | {"reference": "viirs"}).json()
+    assert viirs["reference_source"] == "Suomi-NPP"
+    bad = client.get("/api/calendar/harmonized", params=AREA | {"reference": "landsat"})
+    assert bad.status_code == 422
+
+
 def test_aoi_create_list_validate_and_use(client):
     upload(client)
     # polygon around the two detections at 15.1N 80.2E only
@@ -176,6 +192,13 @@ def test_exports(client):
     assert len(names) == 2 and any(n.endswith(".provenance.json") for n in names)
     cal = client.get("/api/export/csv", params=AREA | {"kind": "calendar"})
     assert "state" in cal.text.splitlines()[0]
+    harm = client.get("/api/export/csv", params=AREA | {"kind": "harmonized_calendar",
+                                                        "bundle": "true"})  # fmt: skip
+    files = zipfile.ZipFile(io.BytesIO(harm.content))
+    csv_name = next(n for n in files.namelist() if n.endswith(".csv"))
+    assert "source" in files.read(csv_name).decode().splitlines()[0]
+    prov = json.loads(files.read(csv_name + ".provenance.json"))
+    assert prov["kind"].startswith("harmonized") and prov["conversion_fits"]
     report = client.get("/api/export/report", params=AREA).json()
     assert report["status"].startswith("EXPERIMENTAL")
     md = client.get("/api/export/report", params=AREA | {"format": "md"})
@@ -228,7 +251,7 @@ def test_openapi_lists_all_spec_endpoints(client):
     expected = {
         "/api/health", "/api/sensors", "/api/data/availability", "/api/ingest/upload",
         "/api/ingest/firms", "/api/ingest/history", "/api/hotspots", "/api/hotspots/summary",
-        "/api/calendar", "/api/analytics/monthly", "/api/analytics/yearly",
+        "/api/calendar", "/api/calendar/harmonized", "/api/analytics/monthly", "/api/analytics/yearly",
         "/api/analytics/anomalies", "/api/analytics/sensor-comparison", "/api/aoi",
         "/api/export/csv", "/api/export/report",
     }  # fmt: skip

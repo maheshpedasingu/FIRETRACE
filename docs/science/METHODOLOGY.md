@@ -49,7 +49,13 @@ overpass timing and small or cool fires all cause omissions.
    sensor's mean modified z. It is a dimensionless anomaly score relative to each
    platform's own history, **not a calibrated fire count**, and raw MODIS and VIIRS
    counts are never added.
-8. **Calendar and analytics.** Years × months per platform with states value, zero,
+8. **Harmonized calendar (experimental).** One continuous calendar in the units of a
+   reference sensor (MODIS Terra+Aqua by default, or Suomi-NPP VIIRS): months measured
+   by other platforms are converted with an area-specific factor fitted where both
+   overlap and tested on held-out years; each month shows its source and uncertainty.
+   Coverage never starts before a platform's first FIRMS record, so no false zeros
+   appear before a satellite's launch. Details: `harmonization.md`.
+9. **Calendar and analytics.** Years × months per platform with states value, zero,
    partial, uncovered and missing; yearly totals and year-over-year change only for
    complete years; FRP, confidence and day/night distributions.
 

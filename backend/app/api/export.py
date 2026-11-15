@@ -36,10 +36,11 @@ def _cleanup(*paths) -> BackgroundTask:
 def export_csv(
     services: ServicesDep,
     area: AreaDep,
-    kind: Literal["hotspots", "calendar"] = "hotspots",
+    kind: Literal["hotspots", "calendar", "harmonized_calendar"] = "hotspots",
     confidence: Annotated[list[Literal["low", "nominal", "high"]] | None, Query()] = None,
     daynight: Annotated[list[Literal["D", "N"]] | None, Query()] = None,
     metric: Metric = "detections",
+    reference: Literal["modis", "viirs"] = "modis",
     bundle: Annotated[bool, Query(description="zip with the provenance JSON")] = False,
 ):
     """CSV download. ``bundle=true`` returns a zip with the CSV and its provenance file."""
@@ -63,9 +64,22 @@ def export_csv(
         details |= {"kind": "filtered hotspot detections",
                     "filters": {"confidence": confidence, "day_night": daynight,
                                 "nrt_superseded_by_sp": True}, **stats}  # fmt: skip
-    else:
+    elif kind == "calendar":
         write_csv(aa.calendar_table(ctx, metric, DEFAULT_MIN_HISTORY_YEARS), csv_path)
         details |= {"kind": "activity calendar (long format)", "metric": metric}
+    else:
+        result = aa.harmonized_calendar(ctx, reference, metric, DEFAULT_MIN_HISTORY_YEARS)
+        write_csv(result["cells"], csv_path)
+        details |= {
+            "kind": "harmonized activity calendar (EXPERIMENTAL)",
+            "metric": metric,
+            "unit": result["unit"],
+            "reference": result["reference_source"],
+            "conversion_fits": result["fits"],
+            "caveat": "Statistical bridge between sensors (constant factor per source, "
+            "ratio of sums on training years, validated on held-out years); not a "
+            "physical correction. Per-platform calendars remain the primary record.",
+        }
     provenance = write_provenance(csv_path, details)
     if not bundle:
         return FileResponse(csv_path, media_type="text/csv", filename=name,

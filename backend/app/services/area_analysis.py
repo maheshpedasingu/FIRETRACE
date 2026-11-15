@@ -21,6 +21,7 @@ from app.analytics.series import (
 from app.analytics.yearly import yearly_summary
 from app.harmonization.aggregate_store import AggregateStore
 from app.harmonization.cross_sensor import match_detections, monthly_calibration
+from app.harmonization.harmonized import harmonize
 from app.ingestion.firms_schema import CANONICAL_COLUMNS, Platform
 
 MODIS = [Platform.TERRA.value, Platform.AQUA.value]
@@ -153,6 +154,13 @@ def summary(ctx: AreaContext, processed) -> dict:
 
 def calendar_table(ctx: AreaContext, metric: str, min_history_years: int) -> pd.DataFrame:
     return build_calendar(series(ctx), metric, min_history_years)
+
+
+def harmonized_calendar(
+    ctx: AreaContext, reference: str, metric: str, min_history_years: int
+) -> dict:
+    """EXPERIMENTAL: one calendar in a single reference unit (see harmonization.harmonized)."""
+    return harmonize(series(ctx), reference, metric, min_history_years)
 
 
 def yearly_table(ctx: AreaContext, metric: str) -> pd.DataFrame:

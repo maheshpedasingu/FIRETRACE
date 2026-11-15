@@ -21,6 +21,8 @@ from datetime import date, timedelta
 import numpy as np
 import pandas as pd
 
+from app.analytics.platform_periods import first_record_day
+
 
 @dataclass(frozen=True)
 class AreaBBox:
@@ -71,6 +73,10 @@ def covered_days(
     status: str | None = None,
 ) -> set[date]:
     days: set[date] = set()
+    # Never count days before the platform's first FIRMS record as covered.
+    platform_start = first_record_day(platform)
+    if platform_start is not None:
+        start = max(start, platform_start)
     for row in coverage:
         if row["platform"] != platform or row["start_date"] is None:
             continue

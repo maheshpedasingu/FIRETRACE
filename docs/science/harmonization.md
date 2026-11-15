@@ -107,6 +107,44 @@ disagreement, and every platform that was not assessed with its reason. HAI is a
 dimensionless anomaly score relative to each platform's own history; it is **not** a
 calibrated physical fire count and does not add raw MODIS and VIIRS counts.
 
+## Harmonized calendar (experimental, v1.1)
+
+The per-platform calendars stay the original record. The harmonized calendar adds ONE
+continuous series in the units of a reference sensor, so the record from 2000 (MODIS)
+continues seamlessly into the VIIRS era (`app/harmonization/harmonized.py`,
+`GET /api/calendar/harmonized`).
+
+1. **Platform data periods.** Coverage never starts before a platform's first FIRMS
+   record (Terra 2000-11-01, Aqua 2002-07-04, Suomi-NPP 2012-01-20, NOAA-20 2018-04-01,
+   NOAA-21 2024-01-17; sources in `app/analytics/platform_periods.py`). Without this, an
+   archive request reaching back before a launch would create false zeros.
+2. **Sources.** Every platform, plus *MODIS (Terra+Aqua)*: the sum of Terra and Aqua for
+   months where both are completely covered.
+3. **Reference unit.** `reference=modis` (default): MODIS (Terra+Aqua) detections, the
+   longest record. `reference=viirs`: Suomi-NPP detections, the finer record.
+4. **Conversion factors.** For every other source, `reference ≈ factor × source`,
+   fitted as a ratio of sums over months where both are completely covered, on training
+   years. Every third overlap year (the 2nd, 5th, …) is held out for validation: bias,
+   MAE, RMSE, RMSE relative to the mean, and the correlation of log(1 + count). At least
+   12 training and 6 validation months are required; otherwise no factor is produced and
+   months that would need it are shown as missing with the reason.
+5. **Month value.** Sources are tried in a fixed priority order (reference first, then
+   the other sensor's platforms); the first one with complete coverage and a factor gives
+   the value. If none is complete, a partially covered source gives a `partial` value;
+   detections without coverage give an `uncovered` lower bound; otherwise `missing`.
+   Each month records its source, raw value, factor and relative uncertainty (the
+   factor's relative validation RMSE; 0 for reference months).
+6. **History comparison.** The harmonized series gets the same modified z against the
+   same calendar month in earlier complete years (min. 5 years), and the dashboard shows
+   the latest month against the median of earlier complete years.
+
+Limits: one constant factor per source and area cannot represent every season, fire
+type or change in the satellites' orbits (Terra and Aqua drift late in their missions);
+VIIRS detects many small fires that MODIS misses, so the factor depends on the local
+fire regime and must be fitted per area. Months converted from another sensor are
+marked (≈) and carry their uncertainty. It is a statistical bridge, not a physical
+correction.
+
 ## Stage G — validation report
 
 `python -m app.cli.anomaly_report` writes JSON and Markdown to
@@ -117,5 +155,6 @@ the methods are validated on real multi-year data.
 
 ## Not yet done
 
-Validation on real multi-year archives (needs imported FIRMS history). GeoJSON polygon
+Validation of the harmonized calendar and the baselines on real multi-year archives
+(needs imported FIRMS history). GeoJSON polygon
 AOIs are supported (Shapely); no country or admin-1 boundary dataset is bundled.
