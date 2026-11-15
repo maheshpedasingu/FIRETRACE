@@ -1,6 +1,7 @@
 <p align="center">
-  <img src="docs/assets/firetrace-banner.jpg" alt="FIRETRACE — Global Satellite Fire Intelligence: MODIS and VIIRS harmonization, burning activity calendar, interactive global map, fire analytics" width="100%">
+  <img src="docs/assets/firetrace-banner.jpg" alt="FIRETRACE banner (SI-generated image, watermarked): Global Satellite Fire Intelligence — MODIS and VIIRS harmonization, burning activity calendar, interactive global map, fire analytics" width="100%">
 </p>
+<p align="center"><sub>Banner: SI-generated image (see <a href="#use-of-super-intelligence-si">Use of Super Intelligence</a>).</sub></p>
 
 # FIRETRACE
 
@@ -254,6 +255,25 @@ cd ..\frontend; npm test; npm run build
 
 Code: MIT (see `LICENSE`). NASA FIRMS data is not included in this repository; when you
 use it, follow the NASA FIRMS citation and data-use policy.
+
+## Use of Super Intelligence (SI)
+
+Built for the NASA Space Apps Challenge by team **Quantum Cluster**, with SI tools used
+as follows:
+
+| What | SI tool | How it was used | Marked where |
+|---|---|---|---|
+| Code and tests (backend and frontend) | Claude (Anthropic), AI coding assistant | Drafted the code, tests and refactors from our requirements; every change was run, tested and reviewed by the team on Windows, and checked against real NASA FIRMS data | Each SI-written commit has `Co-Authored-By: Claude` and the author `claude` in the git history |
+| Documentation and text | Claude | Drafted the README, methodology, validation reports and project summary; figures in them come from our own runs | This section; git history |
+| Demo slides (`docs/demo/`) | Claude | Built the 6-slide deck from our results | Title slide and file metadata |
+| Banner image (`docs/assets/firetrace-banner.jpg`) | AI image generator | Generated the banner artwork | Visible "SI-generated image" watermark; caption under the banner |
+
+Not SI-generated: the satellite data (NASA FIRMS archive files, imported unchanged),
+all numbers and results (computed by FIRETRACE from that data), and the calendar and
+chart images (exported from the app). No NASA logo, flag or mission insignia is used.
+The team chose the problem and the approach, made the design decisions (for example
+rejecting conversion factors that fail validation), ran every test and import, and
+checked every result.
 
 ## Acknowledgments
 
