@@ -131,6 +131,20 @@ python -m app.cli.import_archive E:\path\to\firms_downloads
 
 See `docs/architecture/storage.md` for options (platform, coverage bbox/country and dates).
 
+**Archive Download Tool requests** (e.g. country India, MODIS + VIIRS S-NPP,
+2000-11-01 to 2026-11-07) carry no coverage in their file names, so declare it exactly
+as requested:
+
+```powershell
+python -m app.cli.import_archive E:\FIRETRACE_WORKSPACE\downloads\<file>.zip --country India --start 2000-11-01 --end 2026-11-07
+```
+
+Coverage is then clipped automatically to each satellite's FIRMS record (Aqua from
+2002-07-04, Suomi-NPP 2012-01-20 to 2026-11-02, …) and split between standard (SP) and
+near-real-time (NRT) records at the last SP day. In the dashboard, enter the country in
+**Inside country** (or pick the India example) so the country coverage counts for the
+area; use it only for areas that lie entirely inside that country.
+
 ## Fetching recent data from the FIRMS API
 
 Needs `FIRMS_MAP_KEY` in `backend/.env`. From `backend/`:

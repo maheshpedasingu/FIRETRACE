@@ -82,7 +82,10 @@ overpass timing and small or cool fires all cause omissions.
   country areas must be supplied as GeoJSON.
 - NRT/SP supersession works per platform-day: SP data covering only part of an area on a
   day still removes that day's NRT records for the area.
-- Detection matching groups by UTC day, so pairs straddling midnight UTC are not matched.
+- Detection matching groups by UTC day, so pairs straddling midnight UTC are not matched,
+  and it uses only the last 366 days of the selected period (memory).
+- FIRMS country downloads count as coverage only for areas the user states lie inside
+  that country ("Inside country"); the country border itself is not bundled.
 - MODIS confidence has regionally varying meaning (NASA guidance); classes are kept
   but not used to drop records unless the user filters by them.
 

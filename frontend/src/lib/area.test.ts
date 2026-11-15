@@ -73,4 +73,12 @@ describe("dates and query parameters", () => {
     expect(saved.get("aoi_id")).toBe("3");
     expect(saved.has("bbox")).toBe(false);
   });
+
+  it("sends the containing country only when one is given", () => {
+    const bbox = { west: 68.1, south: 6.7, east: 97.4, north: 35.7 };
+    const base = { area: { kind: "bbox" as const, bbox }, start: "2001-01-01", end: "2001-12-31", platforms: [] };
+    expect(areaParams(base).get("country")).toBe(null);
+    expect(areaParams({ ...base, country: " India " }).get("country")).toBe("India");
+    expect(areaParams({ ...base, country: "  " }).get("country")).toBe(null);
+  });
 });

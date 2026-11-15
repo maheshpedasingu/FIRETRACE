@@ -24,7 +24,7 @@ from app.database.models import (  # noqa: E402
     SourceFile,
 )
 from app.database.session import init_db, make_engine, make_session_factory  # noqa: E402
-from app.ingestion.coverage import bbox_coverage  # noqa: E402
+from app.ingestion.coverage import bbox_coverage, country_coverage  # noqa: E402
 from app.ingestion.firms_csv import FirmsFormatError  # noqa: E402
 from app.ingestion.importer import (  # noqa: E402
     ImportOptions,
@@ -184,6 +184,23 @@ def test_declared_bbox_coverage_recorded_per_platform(env):
         rows = s.scalars(select(CoverageRecord)).all()
     assert [(r.platform, r.processing_status, r.extent_type, r.basis) for r in rows] == [
         ("Suomi-NPP", "NRT", "bbox", "api_request")
+    ]
+
+
+def test_archive_with_sp_and_nrt_splits_coverage_at_the_last_sp_day(env):
+    """Archive downloads: SP for older months, NRT for the latest ones (SYNTHETIC)."""
+    run, _, sessions, *_ = env
+    sp1 = "10.00000,20.00000,330,0.4,0.4,2023-01-10,0700,N,VIIRS,n,2,290,1.0,D\n"
+    sp2 = "10.10000,20.00000,330,0.4,0.4,2023-02-20,0700,N,VIIRS,n,2,290,1.0,D\n"
+    nrt = "10.20000,20.00000,330,0.4,0.4,2023-03-05,0700,N,VIIRS,n,2.0NRT,290,1.0,D\n"
+    spec = country_coverage("Synthetic Land", date(2023, 1, 1), date(2023, 3, 31))
+    run("SYNTHETIC_archive.csv", HEADER + sp1 + nrt + sp2, coverage=[spec])
+    with sessions() as s:
+        rows = s.scalars(select(CoverageRecord)).all()
+    got = sorted((r.processing_status, r.start_date, r.end_date) for r in rows)
+    assert got == [
+        ("NRT", date(2023, 2, 21), date(2023, 3, 31)),
+        ("SP", date(2023, 1, 1), date(2023, 2, 20)),
     ]
 
 

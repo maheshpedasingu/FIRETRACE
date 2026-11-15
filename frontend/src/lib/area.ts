@@ -17,6 +17,12 @@ export interface AreaQuery {
   start: string; // YYYY-MM-DD (UTC)
   end: string;
   platforms: string[]; // empty = all
+  /**
+   * Country the whole area lies inside, for coverage only. A FIRMS country download
+   * records its coverage as that country (its border is not bundled), so it counts as
+   * covering an area only when the user states the area lies inside it.
+   */
+  country?: string;
 }
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -105,6 +111,7 @@ export function areaParams(
   else params.set("aoi_id", String(q.area.id));
   params.set("start", q.start);
   params.set("end", q.end);
+  if (q.country && q.country.trim()) params.set("country", q.country.trim());
   for (const p of q.platforms) params.append("platform", p);
   for (const [key, value] of Object.entries(extra)) {
     if (value === undefined) continue;
@@ -125,8 +132,13 @@ export function daysBefore(today: Date, days: number): string {
 }
 
 /** Optional example presets. FIRETRACE has no default region. */
-export const EXAMPLE_AREAS: { label: string; bbox: BBox }[] = [
+export const EXAMPLE_AREAS: { label: string; bbox: BBox; country?: string }[] = [
   { label: "Example: Andhra Pradesh, India (approx. bbox)", bbox: { west: 76.7, south: 12.6, east: 84.8, north: 19.9 } },
+  {
+    label: "Example: India (whole country, for an India country download)",
+    bbox: { west: 68.1, south: 6.7, east: 97.4, north: 35.7 },
+    country: "India",
+  },
   { label: "Example: Amazon arc of deforestation, Brazil", bbox: { west: -65, south: -15, east: -45, north: -3 } },
   { label: "Example: Northern Australia", bbox: { west: 120, south: -20, east: 145, north: -11 } },
   { label: "Example: Fiji (crosses 180°)", bbox: { west: 176, south: -21, east: -178, north: -15 } },

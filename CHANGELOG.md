@@ -7,11 +7,20 @@
   series in MODIS (Terra+Aqua)- or Suomi-NPP-equivalent units, with per-month source,
   conversion factor, validation uncertainty, history comparison and the conversion fits.
 - Latest month vs the median of earlier complete years, and the typical fire season.
+- Dashboard "Inside country" field and an India example, so FIRMS country downloads
+  count as coverage for areas inside that country.
 
 ### Fixed (Phase 7)
 - Coverage no longer starts before a platform's first FIRMS record (e.g. Aqua before
   4 July 2002), which would otherwise show false real zeros for archive requests that
-  reach back before a satellite's launch.
+  reach back before a satellite's launch; likewise after its last record (Suomi-NPP
+  ends 2026-11-02). NOAA-21 data start corrected to 2023-03-01 (FIRMS Archive Download).
+- Archive files mixing SP and NRT records: SP coverage now ends on the last SP day and
+  NRT covers the days after it. Before, SP appeared to cover the NRT months and the
+  SP-supersedes-NRT rule would have dropped real NRT detections.
+- Multi-decade queries: the monthly series groups rows once instead of scanning per
+  month; MODIS–VIIRS detection matching uses the last 366 days of the period so memory
+  stays bounded (the monthly calibration still uses the whole period).
 
 ## [1.0.0] - 2026-11-14
 ### Added (release)

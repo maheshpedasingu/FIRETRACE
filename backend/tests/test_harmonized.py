@@ -10,7 +10,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from app.analytics.platform_periods import PLATFORM_DATA_START, first_record_day
+from app.analytics.platform_periods import (
+    PLATFORM_DATA_START,
+    first_record_day,
+    last_record_day,
+)
 from app.analytics.series import AreaBBox, covered_days
 from app.harmonization.harmonized import (
     MODIS_COMBINED,
@@ -164,8 +168,10 @@ def test_fit_conversion_reports_validation_error():
 
 def test_platform_data_start_dates():
     assert PLATFORM_DATA_START["Aqua"] == date(2002, 7, 4)
-    assert first_record_day("NOAA-21") == date(2024, 1, 17)
+    assert first_record_day("NOAA-21") == date(2023, 3, 1)
     assert first_record_day("Unknown") is None
+    assert last_record_day("Suomi-NPP") == date(2026, 11, 2)
+    assert last_record_day("NOAA-20") is None
 
 
 def test_coverage_never_extends_before_a_platforms_first_record():
@@ -179,3 +185,13 @@ def test_coverage_never_extends_before_a_platforms_first_record():
     aqua = covered_days(coverage, aoi, "Aqua", date(2001, 1, 1), date(2002, 7, 10))
     assert min(terra) == date(2001, 1, 1)
     assert min(aqua) == date(2002, 7, 4) and len(aqua) == 7
+
+
+def test_coverage_never_extends_after_a_platforms_last_record():
+    aoi = AreaBBox(70, 10, 90, 25)
+    extent = json.dumps({"west": 60, "south": 0, "east": 100, "north": 30})
+    coverage = [{"platform": "Suomi-NPP", "processing_status": "NRT", "extent_type": "bbox",
+                 "extent_value": extent,
+                 "start_date": date(2026, 10, 30), "end_date": date(2026, 11, 7)}]  # fmt: skip
+    days = covered_days(coverage, aoi, "Suomi-NPP", date(2026, 10, 1), date(2026, 11, 30))
+    assert max(days) == date(2026, 11, 2) and len(days) == 4

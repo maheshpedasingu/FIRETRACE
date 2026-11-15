@@ -21,7 +21,7 @@ from datetime import date, timedelta
 import numpy as np
 import pandas as pd
 
-from app.analytics.platform_periods import first_record_day
+from app.analytics.platform_periods import first_record_day, last_record_day
 
 
 @dataclass(frozen=True)
@@ -73,10 +73,12 @@ def covered_days(
     status: str | None = None,
 ) -> set[date]:
     days: set[date] = set()
-    # Never count days before the platform's first FIRMS record as covered.
-    platform_start = first_record_day(platform)
+    # Never count days outside the platform's FIRMS record as covered.
+    platform_start, platform_end = first_record_day(platform), last_record_day(platform)
     if platform_start is not None:
         start = max(start, platform_start)
+    if platform_end is not None:
+        end = min(end, platform_end)
     for row in coverage:
         if row["platform"] != platform or row["start_date"] is None:
             continue
@@ -167,15 +169,20 @@ def monthly_series(
     for platform in platforms:
         days = covered_days(coverage, aoi, platform, start, end)
         part = sel[sel["platform"] == platform] if not sel.empty else sel
+        by_month: dict[tuple[int, int], pd.DataFrame] = {}
         if len(part):
             stamps = pd.to_datetime(part["acquisition_date"])
             part = part.assign(_year=stamps.dt.year.to_numpy(), _month=stamps.dt.month.to_numpy())
+            # One pass over the rows instead of one scan per month (decades of data).
+            by_month = {
+                (int(y), int(m)): g for (y, m), g in part.groupby(["_year", "_month"], sort=False)
+            }
         for year, month in months_between(start, end):
             first = max(date(year, month, 1), start)
             last = min(date(year, month, calendar.monthrange(year, month)[1]), end)
             n_days = (last - first).days + 1
             n_cov = sum(1 for d in days if first <= d <= last)
-            m = part[(part["_year"] == year) & (part["_month"] == month)] if len(part) else part
+            m = by_month.get((year, month), part.iloc[0:0])
             status = "complete" if n_cov == n_days else "partial" if n_cov else "missing"
             has_rows = not m.empty
             if not has_rows and status == "missing":

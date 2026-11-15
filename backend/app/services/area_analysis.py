@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import calendar as _calendar
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 
 import pandas as pd
 
@@ -26,6 +26,7 @@ from app.ingestion.firms_schema import CANONICAL_COLUMNS, Platform
 
 MODIS = [Platform.TERRA.value, Platform.AQUA.value]
 VIIRS = [Platform.SUOMI_NPP.value, Platform.NOAA_20.value, Platform.NOAA_21.value]
+MATCHING_DAYS = 366
 
 
 @dataclass
@@ -192,7 +193,12 @@ def sensor_comparison(
         ctx.end.year, ctx.end.month, _calendar.monthrange(ctx.end.year, ctx.end.month)[1]
     )
     columns = ["platform", "latitude", "longitude", "acquisition_datetime_utc", "frp_mw"]
-    frames = list(iter_observations(processed, ctx.aoi, ctx.start, min(ctx.end, month_end),
+    # Detection matching reads individual detections, so it is limited to the last
+    # MATCHING_DAYS of the period (memory stays bounded for multi-decade queries); the
+    # monthly calibration above it uses the whole period.
+    match_end = min(ctx.end, month_end)
+    match_start = max(ctx.start, match_end - timedelta(days=MATCHING_DAYS - 1))
+    frames = list(iter_observations(processed, ctx.aoi, match_start, match_end,
                                     columns=columns))  # fmt: skip
     obs = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=columns)
     for m in MODIS:
@@ -215,4 +221,9 @@ def sensor_comparison(
                     ),  # fmt: skip
                 }
             )
-    return {"status": "EXPERIMENTAL", "calibration": calibrations, "matching": matching}
+    return {
+        "status": "EXPERIMENTAL",
+        "calibration": calibrations,
+        "matching": matching,
+        "matching_period": {"start": match_start, "end": match_end},
+    }

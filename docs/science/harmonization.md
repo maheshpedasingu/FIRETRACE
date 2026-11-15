@@ -116,7 +116,8 @@ continues seamlessly into the VIIRS era (`app/harmonization/harmonized.py`,
 
 1. **Platform data periods.** Coverage never starts before a platform's first FIRMS
    record (Terra 2000-11-01, Aqua 2002-07-04, Suomi-NPP 2012-01-20, NOAA-20 2018-04-01,
-   NOAA-21 2024-01-17; sources in `app/analytics/platform_periods.py`). Without this, an
+   NOAA-21 2023-03-01; Suomi-NPP ends 2026-11-02; sources in
+   `app/analytics/platform_periods.py`). Without this, an
    archive request reaching back before a launch would create false zeros.
 2. **Sources.** Every platform, plus *MODIS (Terra+Aqua)*: the sum of Terra and Aqua for
    months where both are completely covered.

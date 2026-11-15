@@ -29,6 +29,7 @@ export function AreaBar({ query, onApply, savedAois, today = new Date() }: Props
   const [start, setStart] = useState(query?.start ?? daysBefore(today, 30));
   const [end, setEnd] = useState(query?.end ?? todayIso);
   const [platforms, setPlatforms] = useState<string[]>(query?.platforms ?? []);
+  const [country, setCountry] = useState(query?.country ?? "");
   const [error, setError] = useState<string | null>(null);
 
   // Follow external changes (e.g. a bbox drawn on the map).
@@ -43,6 +44,7 @@ export function AreaBar({ query, onApply, savedAois, today = new Date() }: Props
     setStart(query.start);
     setEnd(query.end);
     setPlatforms(query.platforms);
+    setCountry(query.country ?? "");
   }, [query]);
 
   function choosePreset(value: string) {
@@ -54,6 +56,7 @@ export function AreaBar({ query, onApply, savedAois, today = new Date() }: Props
     if (preset) {
       setAoiId(null);
       setBbox(bboxText(preset.bbox));
+      setCountry(preset.country ?? "");
     }
   }
 
@@ -66,12 +69,12 @@ export function AreaBar({ query, onApply, savedAois, today = new Date() }: Props
       if (!saved) return setError("Saved area not found");
       const [west, south, east, north] = saved.bbox;
       setError(null);
-      return onApply({ area: { kind: "aoi", id: saved.id, name: saved.name, bbox: { west, south, east, north } }, start, end, platforms });
+      return onApply({ area: { kind: "aoi", id: saved.id, name: saved.name, bbox: { west, south, east, north } }, start, end, platforms, ...(country.trim() ? { country: country.trim() } : {}) });
     }
     const parsed = parseBBox(bbox);
     if (!parsed.ok) return setError(parsed.error);
     setError(null);
-    onApply({ area: { kind: "bbox", bbox: parsed.value }, start, end, platforms });
+    onApply({ area: { kind: "bbox", bbox: parsed.value }, start, end, platforms, ...(country.trim() ? { country: country.trim() } : {}) });
   }
 
   const togglePlatform = (p: string) =>
@@ -122,6 +125,16 @@ export function AreaBar({ query, onApply, savedAois, today = new Date() }: Props
           value={bbox}
           disabled={aoiId !== null}
           onChange={(e) => setBbox(e.target.value)}
+        />
+      </label>
+      <label className="flex flex-col gap-1" title="Only for country downloads: enter the country the WHOLE area lies inside (e.g. India). Its imported coverage then counts for this area. Leave empty otherwise.">
+        <span className="text-[var(--text-secondary)]">Inside country (optional)</span>
+        <input
+          aria-label="Inside country"
+          className="field w-32"
+          placeholder="e.g. India"
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
         />
       </label>
       <label className="flex flex-col gap-1">

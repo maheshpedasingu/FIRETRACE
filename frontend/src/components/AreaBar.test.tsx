@@ -37,6 +37,22 @@ describe("AreaBar", () => {
     });
   });
 
+  it("passes the containing country for country downloads", () => {
+    const onApply = setup();
+    fireEvent.change(screen.getByLabelText("Bounding box"), { target: { value: "68.1,6.7,97.4,35.7" } });
+    fireEvent.change(screen.getByLabelText("Inside country"), { target: { value: "India" } });
+    fireEvent.change(screen.getByLabelText("Start date"), { target: { value: "2026-01-01" } });
+    fireEvent.change(screen.getByLabelText("End date"), { target: { value: "2026-11-14" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(onApply).toHaveBeenCalledWith({
+      area: { kind: "bbox", bbox: { west: 68.1, south: 6.7, east: 97.4, north: 35.7 } },
+      start: "2026-01-01",
+      end: "2026-11-14",
+      platforms: [],
+      country: "India",
+    });
+  });
+
   it("rejects future end dates and notes antimeridian crossing", () => {
     const onApply = setup();
     fireEvent.change(screen.getByLabelText("Bounding box"), { target: { value: "176,-21,-178,-15" } });
