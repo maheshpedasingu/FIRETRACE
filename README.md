@@ -20,6 +20,8 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Status](https://img.shields.io/badge/status-released-orange)](docs/FINAL_REPORT.md)
 
+**Demo (6 slides):** [view PDF](docs/demo/FIRETRACE-demo.pdf) · [download PowerPoint](docs/demo/FIRETRACE-demo.pptx)
+
 **Fire Intelligence and Historical Activity Monitoring System** — a global
 Earth-observation platform that integrates NASA FIRMS MODIS (Terra, Aqua; C6.1) and
 VIIRS 375 m (Suomi-NPP, NOAA-20, NOAA-21; C2) active-fire detections into a
