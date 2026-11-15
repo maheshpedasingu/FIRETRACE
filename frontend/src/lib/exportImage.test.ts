@@ -1,6 +1,6 @@
 // Image export tests. Every value is SYNTHETIC TEST DATA.
 import { describe, expect, it } from "vitest";
-import { calendarSvg, escapeXml, fileSlug, wrapChartSvg } from "./exportImage";
+import { calendarSvg, escapeXml, fileSlug, largestByArea, wrapChartSvg } from "./exportImage";
 
 describe("calendar image", () => {
   const cells = [
@@ -54,5 +54,15 @@ describe("helpers", () => {
     expect(svg.includes('fill="#d95926"') && svg.includes(">Suomi-NPP<")).toBe(true);
     expect(svg.includes('<svg x="24" y="96"')).toBe(true);
     expect(height).toBe(344);
+  });
+});
+
+describe("chart element", () => {
+  it("picks the plot, not a same-class legend icon (regression)", () => {
+    const el = (name: string, width: number, height: number) => ({ name, getBoundingClientRect: () => ({ width, height }) });
+    const icon = el("legend icon", 14, 14);
+    const plot = el("plot", 820, 280);
+    expect(largestByArea([icon, plot, el("icon2", 14, 14)])?.name).toBe("plot");
+    expect(largestByArea([])).toBe(null);
   });
 });

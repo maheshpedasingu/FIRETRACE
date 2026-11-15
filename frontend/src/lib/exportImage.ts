@@ -147,6 +147,25 @@ export function wrapChartSvg(
   return { svg, width, height };
 }
 
+/**
+ * The plot itself among a chart's SVG elements. Recharts gives its small legend icons
+ * the same class ("recharts-surface") as the plot, so take the largest by area.
+ */
+export function largestByArea<T extends { getBoundingClientRect(): { width: number; height: number } }>(
+  elements: T[],
+): T | null {
+  let best: T | null = null;
+  let bestArea = 0;
+  for (const el of elements) {
+    const { width, height } = el.getBoundingClientRect();
+    if (width * height > bestArea) {
+      best = el;
+      bestArea = width * height;
+    }
+  }
+  return best;
+}
+
 /** Safe file name part from free text. */
 export function fileSlug(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9.-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 80);

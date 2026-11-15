@@ -12,7 +12,7 @@ import {
 import { NEUTRAL, PLATFORM_COLORS, PLATFORM_ORDER, TEXT_SECONDARY } from "../lib/colors";
 import type { MonthRow, Platform } from "../types/api";
 import { DownloadImage } from "../components/DownloadImage";
-import { fileSlug, wrapChartSvg } from "../lib/exportImage";
+import { fileSlug, largestByArea, wrapChartSvg } from "../lib/exportImage";
 
 export type MonthlyField = "detections" | "unique_cells" | "frp_sum_mw";
 
@@ -48,7 +48,8 @@ export function MonthlyChart({
   const { data, platforms } = pivotMonthly(rows, field);
   const chartRef = useRef<HTMLDivElement>(null);
   function buildImage() {
-    const svg = chartRef.current?.querySelector("svg.recharts-surface");
+    // The plot, not a legend icon: Recharts uses the same class for both.
+    const svg = largestByArea(Array.from(chartRef.current?.querySelectorAll("svg.recharts-surface") ?? []));
     if (!svg) return null;
     const box = svg.getBoundingClientRect();
     const inner = new XMLSerializer().serializeToString(svg);
