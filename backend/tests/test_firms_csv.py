@@ -138,6 +138,11 @@ def test_processing_status_and_collection_from_version():
         ("2.0RT", Sensor.VIIRS, ("2", ProcessingStatus.RT)),
         ("1.0", Sensor.VIIRS, ("1", ProcessingStatus.SP)),
         ("garbage", Sensor.VIIRS, ("unknown", ProcessingStatus.UNKNOWN)),
+        # FIRMS Archive Download MODIS versions (seen in a real file, 2026-11-15)
+        ("6.03", Sensor.MODIS, ("6", ProcessingStatus.SP)),
+        ("61.03", Sensor.MODIS, ("6.1", ProcessingStatus.SP)),
+        ("6.0NRT", Sensor.MODIS, ("6", ProcessingStatus.NRT)),
+        ("7.03", Sensor.MODIS, ("unknown", ProcessingStatus.SP)),
     ],
 )
 def test_parse_version(version, sensor, expected):

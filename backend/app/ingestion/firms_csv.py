@@ -143,6 +143,9 @@ def parse_version(
 
     Documented forms: "6.1NRT" (C6.1 NRT), "6.1" (C6.1 standard), "2.0URT", "1.0NRT".
     A version with no suffix is standard processing. Anything else is "unknown".
+    FIRMS Archive Download MODIS files (real India download, 2026-11-15) write
+    "6.03" (Collection 6) and "61.03" (Collection 6.1): collection, then a processing
+    version after the dot.
     """
     match = _VERSION_RE.match(version or "")
     if not match:
@@ -152,7 +155,7 @@ def parse_version(
     if sensor is Sensor.MODIS:
         if number.startswith("6.1") or re.fullmatch(r"61(\.\d+)?", number):
             collection = "6.1"
-        elif re.fullmatch(r"6(\.0+)?", number):
+        elif re.fullmatch(r"6(\.0\d*)?", number):
             collection = "6"
         else:
             collection = "unknown"
