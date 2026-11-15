@@ -64,9 +64,13 @@ Duplicate removal across chunks and files is done in storage (Phase 2b).
    column names `brightness` / `bright_t31` for the VIIRS I4 / I5 temperatures, a
    `type` column (0–3) in the standard-processing file only, and splits standard (to
    2026-07-31, version `2`) and NRT (from 2026-08-01, version `2.0NRT`) into
-   `fire_archive_*` and `fire_nrt_*` members. These are accepted. Still unconfirmed:
-   archive codes for NOAA-20/21 and for MODIS, and yearly per-country summary files;
-   unknown values are rejected, never guessed.
+   `fire_archive_*` and `fire_nrt_*` members. These are accepted. The MODIS C6.1
+   Archive Download for India (2000-11-01 to 2026-11-07) uses `satellite` Terra / Aqua,
+   `instrument` MODIS, version `6.03` (Collection 6) or `61.03` (Collection 6.1) for
+   standard processing (to 2026-08-31) and `6.1NRT` after it, and confirms the first
+   records: Terra 2000-11-01, Aqua 2002-07-04. Still unconfirmed: archive codes for
+   NOAA-20/21 and yearly per-country summary files; unknown values are rejected, never
+   guessed.
 3. Done: end-to-end import throughput on the Windows target is in
    `docs/validation/performance.md` (about 5,600 rows/s at 2 million rows, including
    duplicate checks and partitioned writes).

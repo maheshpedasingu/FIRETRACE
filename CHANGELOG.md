@@ -14,6 +14,8 @@
 - FIRMS Archive Download VIIRS S-NPP files (found on the first real import): instrument
   and satellite `SNPP`, and `bright_t31` holding the VIIRS I5 temperature, are now
   read correctly. Unconfirmed instrument values are still rejected.
+- MODIS archive version `6.03` is now labelled Collection 6 (was "unknown"); `61.03`
+  stays Collection 6.1.
 - Coverage no longer starts before a platform's first FIRMS record (e.g. Aqua before
   4 July 2002), which would otherwise show false real zeros for archive requests that
   reach back before a satellite's launch; likewise after its last record (Suomi-NPP
