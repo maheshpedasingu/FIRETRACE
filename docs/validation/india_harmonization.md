@@ -52,16 +52,45 @@ Suomi-NPP units:
   overpass no longer coincides closely with Suomi-NPP's. Matching is a diagnostic,
   not used by the calibration.
 
+## Second check: 100 km circle over Punjab (2012-01 to 2026-10)
+
+Entered as "Point + radius" (30.9 N, 75.8 E, 100 km, inside India). Bounding box
+74.75–76.85 E, 30.00–31.80 N; 178 complete months for Terra and Aqua; Suomi-NPP 177
+complete and 1 partial (January 2012, before its first record on 2012-01-20).
+
+| Platform | Detections | Unique 1 km cells |
+|---|---:|---:|
+| Terra | 18,181 | 12,253 |
+| Aqua | 106,932 | 23,247 |
+| Suomi-NPP | 631,279 | 28,777 |
+
+- November is the peak month (up to 8,071 MODIS-equivalent detections in 2021), October
+  second, with a smaller April–May peak: the rice- and wheat-residue burning seasons.
+- November has fallen from 8,071 (2021) to about 1,000–1,500 (2024–2025). Because recent
+  years are also low, October 2026 (Aqua 423 vs median 2,736.5) is "within normal
+  range" (modified z −1.75): the method compares with the spread of all earlier years.
+- Fits (MODIS units): Aqua 1.167 (33%), Suomi-NPP 0.196 (41%), Terra 6.99 with **196%**
+  held-out error. Terra overpasses in the morning, before most afternoon crop fires.
+  This led to the rule that a factor whose held-out error exceeds 100% of the mean is
+  `rejected` and not applied; confirmed in the dashboard (Terra "rejected", note shown).
+  Over all of India Terra's error is 49%, so Terra is still used there for 2000-11 to
+  2002-06.
+- Detection matching: 0 Terra–S-NPP and 0 of 2,197 Aqua–S-NPP pairs in the last 12
+  months (overpass times; see above).
+
+The India calendar as exported by the dashboard:
+`docs/screenshots/harmonized-calendar-india.png`.
+
 ## Bugs found on this data and fixed (all in phase 7)
 
 Archive VIIRS format (`SNPP` instrument/satellite, `bright_t31` as I5), MODIS `6.03`
 collection label, SP coverage covering NRT months, false zeros before a launch or after
-a platform's end, months cut short by the period treated as complete, Overview crash
+a platform's end, a conversion factor with more error than signal (Punjab), months cut short by the period treated as complete, Overview crash
 once SP data existed, and out-of-memory on decades of data (now streamed one month at a
 time: peak ~0.6 GB, see `performance.md`).
 
 ## Limits
 
-One area only. The factors are specific to India's fire regime and to this period; they
+Two areas (India and a Punjab circle). The factors are specific to India's fire regime and to this period; they
 must be refitted for any other area (FIRETRACE always fits per area). NOAA-20/21 were
 not imported, so they have no factors here.

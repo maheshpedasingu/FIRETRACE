@@ -1,6 +1,6 @@
 [project]
 name = "firetrace-backend"
-version = "1.0.0"
+version = "1.1.0"
 description = "FIRETRACE backend: global NASA FIRMS MODIS/VIIRS fire intelligence API"
 requires-python = ">=3.12"
 

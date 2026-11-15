@@ -5,9 +5,11 @@ Earth-observation platform that integrates NASA FIRMS MODIS (Terra, Aqua; C6.1) 
 VIIRS 375 m (Suomi-NPP, NOAA-20, NOAA-21; C2) active-fire detections into a
 sensor-aware, harmonized historical burning-activity calendar for any area on Earth.
 
-> Status: feature-complete (v1.0 delivery), verified on Windows. Real data processed so
-> far is small (see `docs/DATA_PROVENANCE.md`); anomaly and cross-sensor analytics are
-> experimental until validated on real multi-year archives. Verified checkpoints:
+> Status: v1.1 — harmonized burning activity calendar, verified on Windows with 26 years
+> of real FIRMS archive data for India (10.7 million MODIS and VIIRS detections; see
+> `docs/validation/india_harmonization.md`). Coverage exists only for what was imported
+> (`docs/DATA_PROVENANCE.md`). Harmonization, anomaly and cross-sensor analytics remain
+> labelled experimental. Verified checkpoints:
 > `PROJECT_PROGRESS.md`. Final report: `docs/FINAL_REPORT.md`.
 
 ## Scope
@@ -45,6 +47,11 @@ show "—" or hatched months because no data was imported for them there.
 | ![Calendar: one row per satellite, partial and missing months marked](docs/screenshots/calendar.png) | ![Analytics: monthly series per satellite](docs/screenshots/analytics-charts.png) |
 
 ![Analytics tables: yearly totals, FRP and confidence, experimental anomalies and MODIS–VIIRS comparison](docs/screenshots/analytics-tables.png)
+
+v1.1, real data — harmonized calendar for India, 2000-11 to 2026-11, exported from the
+Calendar page (≈ marks months converted from Terra alone before Aqua's first record):
+
+![Harmonized burning activity calendar for India in MODIS (Terra+Aqua)-equivalent detections](docs/screenshots/harmonized-calendar-india.png)
 
 ## Data sources
 

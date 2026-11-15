@@ -1,7 +1,8 @@
 # FIRETRACE — final report
 
 Specification: FIRETRACE Master Engineering Specification (45-hour sprint), §18, as
-amended by the global-scope correction of 2026-11-14. Report date: 2026-11-14.
+amended by the global-scope correction of 2026-11-14. Report date: 2026-11-15 (v1.1.0;
+v1.0.0 on 2026-11-14).
 All verification was done on the user's Windows 11 PC; nothing below is claimed unless
 it was run there.
 
@@ -35,6 +36,19 @@ experimental anomaly and cross-sensor diagnostics, and CSV exports.
 | Exports | Hotspot CSV, calendar CSV (long and grid), analytics JSON, each with a provenance sidecar |
 | Security | MAP_KEY only in git-ignored `backend/.env`, redacted from errors, never sent to the frontend |
 
+## 2a. Added in v1.1 (harmonized calendar)
+
+A single harmonized burning-activity calendar per area: MODIS (Terra+Aqua) or Suomi-NPP
+is the reference unit; every other source gets one conversion factor fitted on
+completely covered overlap months and tested on held-out years; factors with too little
+overlap are `unavailable`, and factors whose held-out error exceeds 100% of the mean are
+`rejected` — neither is ever applied. Each month records its source, factor and
+uncertainty. Also: latest complete month vs history, typical fire season, PNG/SVG image
+downloads of calendars and charts, "Point + radius (km)" areas, "Inside country" for
+FIRMS country downloads, platform record periods (no false zeros before a launch or after
+an end), SP/NRT coverage split, streamed area statistics (India 2000–2026 in ~0.6 GB),
+and a store-generation cache.
+
 ## 3. Satellite datasets actually processed
 
 | Product | Platform | Area | Detections |
@@ -42,15 +56,27 @@ experimental anomaly and cross-sensor diagnostics, and CSV exports.
 | VIIRS_NOAA20_NRT (C2) | NOAA-20 | bbox 76.7, 12.6, 84.8, 19.9 | 462 (0 invalid) |
 | MODIS_NRT (C6.1) | Terra, Aqua | bbox −150, −30, −140, −20 | 0 (covered zero) |
 
-Both via the FIRMS Area API. No archive (SP) file has been imported. Details:
-`docs/DATA_PROVENANCE.md`.
+Both via the FIRMS Area API (v1.0). Added for v1.1, FIRMS Archive Download for the
+country India, 2000-11-01 to 2026-11-07:
+
+| Product | Platform | Detections |
+|---|---|---:|
+| MODIS C6/C6.1 (SP to 2026-08, NRT after) | Terra | 596,463 |
+| MODIS C6/C6.1 (SP to 2026-08, NRT after) | Aqua | 1,327,528 |
+| VIIRS 375 m C2 (SP to 2026-07, NRT after) | Suomi-NPP | 8,758,389 |
+| | **Total** | **10,682,380** |
+
+Details: `docs/DATA_PROVENANCE.md`.
 
 ## 4. Actual date coverage
 
 - NOAA-20 VIIRS NRT: 2026-11-11 to 2026-11-13 over the first area only.
 - Terra and Aqua MODIS NRT: 2026-11-12 over the second area only.
+- v1.1: India (country download) — Terra from 2000-11-01, Aqua from 2002-07-04,
+  Suomi-NPP from 2012-01-20, all to 2026-11-07.
 - Nothing else. FIRETRACE supports global areas and full sensor history but **does not
-  hold global or historical coverage**. All other months show as missing, not zero.
+  hold global coverage**; NOAA-20/21 history was not imported. All other months show as
+  missing, not zero.
 
 FIRMS service availability observed live on 2026-11-14 (not imported): SP data to
 2026-07-31 (VIIRS) and 2026-08-31 (MODIS); Suomi-NPP NRT to 2026-11-02
@@ -77,7 +103,10 @@ a mean of per-sensor anomaly scores, never a sum of raw counts (F); validation r
 | Grid | EPSG:6933 implementation within 1 mm of PyProj; global extent and ellipsoid area reproduced |
 | MODIS confidence classes | Match MODIS C6/C6.1 User's Guide Table 11; boundary test 0/29/30/79/80/100 |
 | Performance (synthetic) | 2,000,000 rows: import 359 s, compaction 406 s, verify 55 s, aggregates 154 s, 20°×20° 2-year query 51 s, peak 1.64 GB; 0 duplicates, 0 misplaced (`docs/validation/performance.md`) |
-| Not validated | Baselines, anomalies, calibration and HAI on real multi-year data |
+| v1.1 real India data (26 years) | Imported totals match NASA's files; seasonality March–April and November; fits in MODIS units Aqua 1.429 (21%), Terra 3.329 (49%), Suomi-NPP 0.142 (24%, log correlation 0.99) (`docs/validation/india_harmonization.md`) |
+| v1.1 Punjab circle (100 km, 2012–2026) | November peak (crop-residue burning) and its decline since 2021; Terra factor rejected (196% held-out error) |
+| v1.1 memory and speed (India 2000–2026) | Area context 44 s, peak 604 MB; summary 4 s; harmonized calendar 0.8 s (`docs/validation/performance.md`) |
+| Still experimental | Harmonization factors, anomalies and HAI: validated on one country only |
 
 ## 7. Test results
 
@@ -93,13 +122,18 @@ with ruff clean and a successful build.
 Found and fixed during final screenshots: the Overview showed 0 detections for
 platforms without imported coverage of the area; it now shows "—" (unknown).
 
+v1.1 (branch `phase7-harmonized`, 2026-11-15): last verified Windows run pytest **223
+passed**, Vitest **36 passed**, build OK (7l); later commits add tests. v1.1.0 is merged
+only after **224** backend and **46** frontend tests pass on Windows with a successful
+build.
+
 All test data is labelled SYNTHETIC TEST DATA.
 
 ## 8. Known limitations
 
-See `docs/science/METHODOLOGY.md` § Known limitations. In short: only two small real
-datasets processed; experimental analytics not validated on real history; archive
-satellite codes not yet checked on a real file; no bundled country/admin boundaries;
+See `docs/science/METHODOLOGY.md` § Known limitations. In short: real history imported
+for one country (India) and three platforms; one constant conversion factor per source
+and area cannot follow every season; no bundled country/admin boundaries;
 file count limits speed on Windows; partial-area SP days drop NRT for the whole area;
 matching does not cross midnight UTC.
 
@@ -158,6 +192,7 @@ the v1.0.0 merge of `phase6-delivery`.
 | v0.5-dashboard | b0ac976 | REST API and dashboard |
 | v0.6-validation | f761251 | Compaction, verification, benchmark |
 | v1.0.0 | merge of `phase6-delivery` | Final delivery |
+| v1.1.0 | merge of `phase7-harmonized` | Harmonized calendar, real India validation |
 
 ## 13. Repository status
 
@@ -167,9 +202,9 @@ committed. Real data and processed stores live only on the user's machine.
 
 ## 14. Next recommended engineering improvements
 
-1. Import real history: FIRMS yearly per-country archives (MODIS and VIIRS SP) for a few
-   regions and years; check archive satellite codes; validate baselines, calendar and
-   cross-sensor calibration against them; then reconsider the "experimental" labels.
+1. Validate on more regions (another fire regime, e.g. a savanna country) and import
+   NOAA-20/21 history; then reconsider the "experimental" labels.
+1a. Seasonal (per-month) conversion factors where enough overlap exists.
 2. Bundle country and admin-1 boundaries (e.g. Natural Earth) for area selection.
 3. Speed for sparse global data: per-partition id index instead of re-reading ids,
    yearly partitions for archive data, parallel aggregate builds, DuckDB queries.

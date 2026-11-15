@@ -1,6 +1,9 @@
 # Changelog
 
-## [Unreleased]
+## [1.1.0] - 2026-11-15
+Harmonized burning activity calendar, validated on 26 years of real FIRMS archive data
+for India (10,682,380 detections) and a 100 km circle over Punjab.
+
 ### Added (Phase 7, harmonized calendar)
 - Harmonized burning activity calendar (`GET /api/calendar/harmonized`, dashboard
   Calendar → "Harmonized (one calendar)", CSV export with provenance): one continuous
