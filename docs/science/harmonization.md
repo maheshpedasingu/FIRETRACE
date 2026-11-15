@@ -137,7 +137,9 @@ continues seamlessly into the VIIRS era (`app/harmonization/harmonized.py`,
    factor's relative validation RMSE; 0 for reference months).
 6. **History comparison.** The harmonized series gets the same modified z against the
    same calendar month in earlier complete years (min. 5 years), and the dashboard shows
-   the latest month against the median of earlier complete years.
+   the latest completely covered month against the median of earlier complete years.
+   A month counts as complete only when every day of the calendar month is covered, so
+   a month cut short by the selected period is never compared with full months.
 
 Limits: one constant factor per source and area cannot represent every season, fire
 type or change in the satellites' orbits (Terra and Aqua drift late in their missions);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareWithHistory, latestMonth, monthlyClimatology, sourceTag } from "./harmonized";
+import { compareWithHistory, latestCompleteMonth, latestMonth, monthlyClimatology, sourceTag } from "./harmonized";
 import type { HarmonizedCell } from "../types/api";
 
 // SYNTHETIC TEST DATA
@@ -34,5 +34,11 @@ describe("harmonized helpers", () => {
     expect(sourceTag("MODIS (Terra+Aqua)")).toBe("T+A");
     expect(sourceTag("Suomi-NPP")).toBe("S");
     expect(sourceTag(null)).toBe("");
+  });
+  it("skips a final month that is only partly in the period", () => {
+    const cells = [cell(2026, 10, 3000), cell(2026, 11, 2744, "partial")];
+    expect(latestMonth(cells)).toEqual({ year: 2026, month: 11 });
+    expect(latestCompleteMonth(cells)).toEqual({ year: 2026, month: 10 });
+    expect(latestCompleteMonth([cell(2026, 11, 5, "partial")])).toBe(null);
   });
 });

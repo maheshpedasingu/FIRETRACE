@@ -63,6 +63,12 @@ export function latestMonth(cells: HarmonizedCell[]): { year: number; month: num
   return { year: last.year, month: last.month };
 }
 
+/** The latest month that is completely covered (state "value" or "zero"), if any. */
+export function latestCompleteMonth(cells: HarmonizedCell[]): { year: number; month: number } | null {
+  const complete = cells.filter((c) => c.state === "value" || c.state === "zero");
+  return latestMonth(complete);
+}
+
 /** Ranking of calendar months by their median value across complete years. */
 export function monthlyClimatology(cells: HarmonizedCell[]): { month: number; median: number | null; years: number }[] {
   return Array.from({ length: 12 }, (_, i) => {

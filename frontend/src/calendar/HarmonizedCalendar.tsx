@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { fmt } from "../components/Status";
 import { STATE_LABELS, binEdges, cellStyle } from "../lib/colors";
-import { compareWithHistory, latestMonth, monthlyClimatology, sourceTag } from "../lib/harmonized";
+import { compareWithHistory, latestCompleteMonth, latestMonth, monthlyClimatology, sourceTag } from "../lib/harmonized";
 import type { ConversionFit, HarmonizedCalendar as HarmonizedData, HarmonizedCell } from "../types/api";
 import { CalendarLegend } from "./CalendarHeatmap";
 
@@ -64,23 +64,33 @@ function FitsTable({ fits, reference }: { fits: ConversionFit[]; reference: stri
 }
 
 function CurrentVsHistory({ cells, unit }: { cells: HarmonizedCell[]; unit: string }) {
-  const latest = latestMonth(cells);
-  if (!latest) return null;
-  const c = compareWithHistory(cells, latest.year, latest.month);
-  const when = `${MONTHS[c.month - 1]} ${c.year}`;
+  const last = latestMonth(cells);
+  if (!last) return null;
+  const target = latestCompleteMonth(cells);
+  const lastCell = cells.find((c) => c.year === last.year && c.month === last.month);
+  const lastWhen = `${MONTHS[last.month - 1]} ${last.year}`;
+  const skipped =
+    target && (target.year !== last.year || target.month !== last.month) && lastCell
+      ? ` (${lastWhen} is not compared: ${STATE_LABELS[lastCell.state].toLowerCase()}, e.g. only part of the month is in the selected period.)`
+      : "";
   let text: string;
-  if (c.state !== "value" && c.state !== "zero") {
-    text = `${when} is not completely covered (${STATE_LABELS[c.state].toLowerCase()}), so it is not compared with history.`;
-  } else if (c.median === null) {
-    text = `${when}: ${fmt(c.value, 1)} ${unit}; no earlier completely covered ${MONTHS[c.month - 1]} to compare with.`;
+  if (!target) {
+    text = `No completely covered month in the selected period, so nothing is compared with history.`;
   } else {
-    const rel = c.ratio === null ? "" : ` — ${fmt(c.ratio, 2)} × the median`;
-    text = `${when}: ${fmt(c.value, 1)} ${unit} vs a median of ${fmt(c.median, 1)} over ${c.historyYears.length} earlier ${MONTHS[c.month - 1]}s (${c.historyYears[0]}–${c.historyYears[c.historyYears.length - 1]})${rel}.`;
+    const c = compareWithHistory(cells, target.year, target.month);
+    const when = `${MONTHS[c.month - 1]} ${c.year}`;
+    if (c.median === null) {
+      text = `${when}: ${fmt(c.value, 1)} ${unit}; no earlier completely covered ${MONTHS[c.month - 1]} to compare with.`;
+    } else {
+      const rel = c.ratio === null ? "" : ` — ${fmt(c.ratio, 2)} × the median`;
+      text = `${when}: ${fmt(c.value, 1)} ${unit} vs a median of ${fmt(c.median, 1)} over ${c.historyYears.length} earlier ${MONTHS[c.month - 1]}s (${c.historyYears[0]}–${c.historyYears[c.historyYears.length - 1]})${rel}.`;
+    }
   }
   return (
     <p className="mb-3 rounded border border-[var(--border)] p-3 text-sm" aria-live="polite">
-      <span className="font-medium">Latest month vs history: </span>
+      <span className="font-medium">Latest complete month vs history: </span>
       {text}
+      {skipped}
     </p>
   );
 }

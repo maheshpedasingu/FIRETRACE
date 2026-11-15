@@ -11,6 +11,11 @@
   count as coverage for areas inside that country.
 
 ### Fixed (Phase 7)
+- A month cut short by the selected period (e.g. 1–7 Nov) was "complete" if every
+  selected day was covered, so 7 days were compared with full Novembers (found on the
+  real India calendar: "0.30 × the median"). "Complete" now means the whole calendar
+  month is covered; such months are partial, and the dashboard compares the latest
+  complete month with history.
 - FIRMS Archive Download VIIRS S-NPP files (found on the first real import): instrument
   and satellite `SNPP`, and `bright_t31` holding the VIIRS I5 temperature, are now
   read correctly. Unconfirmed instrument values are still rejected.

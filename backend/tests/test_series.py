@@ -79,7 +79,8 @@ def test_counts_unique_cells_and_cell_days_inside_aoi_only():
     )
     r = row(table, "NOAA-20", 2026, 11)
     assert (r.detections, r.cell_days, r.unique_cells) == (4, 3, 2)
-    assert (r.days_in_range, r.days_covered, r.coverage_status) == (3, 3, "complete")
+    # every selected day is covered, but only 3 of November's 30 days are selected
+    assert (r.days_in_range, r.days_covered, r.coverage_status) == (3, 3, "partial")
     assert r.frp_sum_mw == 11.0 and r.frp_max_mw == 5.0
 
 
@@ -91,6 +92,17 @@ def test_covered_month_without_detections_is_zero_uncovered_is_missing():
     nov, oct_ = row(table, "Terra", 2026, 11), row(table, "Terra", 2026, 10)
     assert nov.coverage_status == "complete" and nov.detections == 0
     assert oct_.coverage_status == "missing" and np.isnan(oct_.detections)
+
+
+def test_month_cut_short_by_the_period_is_partial_not_complete():
+    """Real case: period ending 7 Nov compared 7 days with 26 full Novembers."""
+    coverage = [cov("Terra", date(2026, 10, 1), date(2026, 11, 30), status="NRT")]
+    table = monthly_series(
+        SYNTHETIC, AOI, date(2026, 10, 1), date(2026, 11, 7), coverage, ["Terra"]
+    )
+    assert row(table, "Terra", 2026, 10).coverage_status == "complete"
+    nov = row(table, "Terra", 2026, 11)
+    assert (nov.days_in_range, nov.days_covered, nov.coverage_status) == (7, 7, "partial")
 
 
 def test_partial_coverage_is_reported():

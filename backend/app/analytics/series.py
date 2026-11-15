@@ -183,7 +183,12 @@ def monthly_series(
             n_days = (last - first).days + 1
             n_cov = sum(1 for d in days if first <= d <= last)
             m = by_month.get((year, month), part.iloc[0:0])
-            status = "complete" if n_cov == n_days else "partial" if n_cov else "missing"
+            # "complete" means the WHOLE calendar month is covered. A month cut short by
+            # the selected period (e.g. 1-7 Nov) is partial even if every selected day is
+            # covered: calendars, anomalies, history comparisons and calibration compare
+            # whole months, so a truncated month must never pass as complete.
+            month_days = calendar.monthrange(year, month)[1]
+            status = "complete" if n_cov == month_days else "partial" if n_cov else "missing"
             has_rows = not m.empty
             if not has_rows and status == "missing":
                 values = dict.fromkeys(
