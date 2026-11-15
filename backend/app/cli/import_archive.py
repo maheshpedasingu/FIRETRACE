@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -91,9 +92,18 @@ def main(argv: list[str] | None = None) -> int:
 
     failures = 0
     for path in _files(args.paths):
+        print(f"Importing {path.name} ...", flush=True)
+
+        def progress(rows: int, files: int, name: str = path.name) -> None:
+            print(f"  {name}: {rows} new rows staged in {files} files", flush=True)
+
         try:
             result = import_file(
-                path, session_factory=sessions, store=store, raw_dir=raw_dir, options=options
+                path,
+                session_factory=sessions,
+                store=store,
+                raw_dir=raw_dir,
+                options=replace(options, progress=progress),
             )
         except Exception as exc:  # report and continue with the next file
             failures += 1

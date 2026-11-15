@@ -47,3 +47,70 @@ def platform_distributions(observations: pd.DataFrame) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows)
+
+
+def distributions_from_cell_days(
+    cell_days: pd.DataFrame, frp_detections: pd.DataFrame | None = None
+) -> pd.DataFrame:
+    """Per-platform distributions from cell-day aggregates (see distributions_from_totals)."""
+    if cell_days.empty:
+        return pd.DataFrame()
+    sums = ["detections", "day_detections", "night_detections", "unknown_daynight_detections",
+            "frp_sum_mw", "frp_count", "confidence_low", "confidence_nominal",
+            "confidence_high", "confidence_missing"]  # fmt: skip
+    grouped = cell_days.groupby("platform", sort=True)
+    totals = grouped[sums].sum()
+    totals["frp_max_mw"] = grouped["frp_max_mw"].max()
+    return distributions_from_totals(totals.reset_index(), frp_detections)
+
+
+def distributions_from_totals(
+    totals: pd.DataFrame, frp_detections: pd.DataFrame | None = None
+) -> pd.DataFrame:
+    """Per-platform distributions from summed cell-day aggregates (exact counts, FRP
+    sum / mean / max), with FRP median and percentiles from ``frp_detections``
+    (individual detections, possibly a shorter period): percentiles cannot be recovered
+    from sums."""
+    if totals.empty:
+        return pd.DataFrame()
+    rows = []
+    for t in totals.sort_values("platform").itertuples(index=False):
+        platform = str(t.platform)
+        detections = int(t.detections)
+        frp_values = int(t.frp_count)
+        frp_sum = float(t.frp_sum_mw)
+        detail = (
+            pd.to_numeric(
+                frp_detections.loc[frp_detections["platform"] == platform, "frp_mw"],
+                errors="coerce",
+            ).dropna()
+            if frp_detections is not None and len(frp_detections)
+            else pd.Series(dtype="float64")
+        )
+
+        def pct(q: float, values: pd.Series = detail) -> float:
+            return float(values.quantile(q)) if len(values) else np.nan
+
+        rows.append(
+            {
+                "platform": platform,
+                "detections": detections,
+                "frp_values": frp_values,
+                "frp_missing": detections - frp_values,
+                "frp_sum_mw": frp_sum if frp_values else np.nan,
+                "frp_mean_mw": frp_sum / frp_values if frp_values else np.nan,
+                "frp_median_mw": pct(0.5),
+                "frp_p90_mw": pct(0.9),
+                "frp_p99_mw": pct(0.99),
+                "frp_percentile_detections": int(len(detail)),
+                "frp_max_mw": float(t.frp_max_mw) if frp_values else np.nan,
+                "confidence_low": int(t.confidence_low),
+                "confidence_nominal": int(t.confidence_nominal),
+                "confidence_high": int(t.confidence_high),
+                "confidence_missing": int(t.confidence_missing),
+                "day": int(t.day_detections),
+                "night": int(t.night_detections),
+                "daynight_unknown": int(t.unknown_daynight_detections),
+            }
+        )
+    return pd.DataFrame(rows)

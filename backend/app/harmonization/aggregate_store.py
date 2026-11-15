@@ -11,6 +11,7 @@ aggregate.
 from __future__ import annotations
 
 import os
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,11 +28,21 @@ class MonthKey:
     month: int
 
 
+_BUILD_LOCKS: dict[str, threading.RLock] = {}
+_BUILD_LOCKS_GUARD = threading.Lock()
+
+
+def _build_lock(root: Path) -> threading.RLock:
+    with _BUILD_LOCKS_GUARD:
+        return _BUILD_LOCKS.setdefault(str(Path(root).resolve()), threading.RLock())
+
+
 class AggregateStore:
     def __init__(self, processed_dir: Path, resolution_m: int = 1000) -> None:
         self.observations = Path(processed_dir) / "observations"
         self.root = Path(processed_dir) / "aggregates" / f"cell_days_{resolution_m}m"
         self.resolution_m = resolution_m
+        self._fresh_for: str | None = None
 
     def month_path(self, key: MonthKey) -> Path:
         return self.root / key.sensor / f"{key.year:04d}" / f"{key.month:02d}.parquet"
@@ -79,13 +90,26 @@ class AggregateStore:
         return len(result)
 
     def build_stale(self) -> dict[MonthKey, int]:
-        return {key: self.build_month(key) for key in self.stale_months()}
+        # One builder at a time per store (concurrent API requests would otherwise
+        # write the same month file simultaneously).
+        with _build_lock(self.root):
+            return {key: self.build_month(key) for key in self.stale_months()}
 
-    def read(self, sensors: list[str] | None = None, start=None, end=None) -> pd.DataFrame:
-        """Read cell-days, limited to whole months overlapping start..end."""
-        frames = []
+    def ensure_fresh(self, generation_token: str) -> None:
+        """Build stale months only when the store generation changed since the last
+        check by this process: scanning thousands of files on every request is slow."""
+        with _build_lock(self.root):
+            if self._fresh_for == generation_token:
+                return
+            for key in self.stale_months():
+                self.build_month(key)
+            self._fresh_for = generation_token
+
+    def month_paths(self, sensors: list[str] | None = None, start=None, end=None) -> list[Path]:
+        """Aggregate files of whole months overlapping start..end (one per sensor-month)."""
         if not self.root.is_dir():
-            return pd.DataFrame()
+            return []
+        paths = []
         for path in sorted(self.root.rglob("*.parquet")):
             sensor, year, month_file = path.relative_to(self.root).parts
             if sensors and sensor not in sensors:
@@ -95,5 +119,11 @@ class AggregateStore:
                 continue
             if end is not None and (year, month) > (end.year, end.month):
                 continue
-            frames.append(pd.read_parquet(path))
+            paths.append(path)
+        return paths
+
+    def read(self, sensors: list[str] | None = None, start=None, end=None) -> pd.DataFrame:
+        """Read cell-days, limited to whole months overlapping start..end. Loads all of
+        them at once: for large areas and long periods use area_stream.stream_area."""
+        frames = [pd.read_parquet(p) for p in self.month_paths(sensors, start, end)]
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()

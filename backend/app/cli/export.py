@@ -16,20 +16,19 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
 
+from app.analytics.area_stream import stream_area
 from app.analytics.baselines import DEFAULT_MIN_HISTORY_YEARS
 from app.analytics.calendar import build_calendar, calendar_grid
-from app.analytics.distributions import platform_distributions
+from app.analytics.distributions import distributions_from_totals
 from app.analytics.observations import iter_observations
 from app.analytics.series import (
     AreaBBox,
     drop_superseded,
-    monthly_series,
-    sp_days_by_platform,
 )
 from app.analytics.yearly import yearly_summary
 from app.cli.area_summary import load_coverage
@@ -38,6 +37,7 @@ from app.core.config import Settings, get_settings
 from app.exports.writers import export_hotspots, write_csv, write_json, write_provenance
 from app.harmonization.aggregate_store import AggregateStore
 from app.ingestion.firms_schema import Platform
+from app.services.area_analysis import FRP_PERCENTILE_DAYS
 
 PLATFORMS = [p.value for p in Platform]
 METRICS = ("detections", "unique_cells", "cell_days")
@@ -88,14 +88,10 @@ def run(argv: list[str] | None = None, *, settings: Settings | None = None, out=
         "platforms": platforms,
     }
 
-    cell_days = aggregates.read(start=args.start, end=args.end)
+    # One aggregate month at a time: memory stays bounded for decades of data.
+    area = stream_area(aggregates, aoi, args.start, args.end, coverage, platforms)
     if args.kind == "hotspots":
-        sp_days = None
-        if not args.no_supersede and len(cell_days):
-            in_area = cell_days[
-                aoi.contains_points(cell_days["cell_lat"], cell_days["cell_lon"]).to_numpy()
-            ]
-            sp_days = sp_days_by_platform(in_area, aoi, args.start, args.end, coverage)
+        sp_days = None if args.no_supersede else area.sp_days
         stats = export_hotspots(
             iter_observations(processed, aoi, args.start, args.end),
             args.out,
@@ -121,7 +117,7 @@ def run(argv: list[str] | None = None, *, settings: Settings | None = None, out=
         out(f"wrote {stats['rows']} detections to {args.out}")
         return 0
 
-    series = monthly_series(cell_days, aoi, args.start, args.end, coverage, platforms)
+    series = area.series
     calendar = build_calendar(series, args.metric, args.min_history_years)
     details = {**common, "metric": args.metric, "min_history_years": args.min_history_years}
 
@@ -137,23 +133,23 @@ def run(argv: list[str] | None = None, *, settings: Settings | None = None, out=
                 out(f"wrote {grid_path}")
         return 0
 
-    observations = list(iter_observations(processed, aoi, args.start, args.end))
-    detections = pd.concat(observations, ignore_index=True) if observations else pd.DataFrame()
-    if len(detections) and len(cell_days):
-        in_area = cell_days[
-            aoi.contains_points(cell_days["cell_lat"], cell_days["cell_lon"]).to_numpy()
-        ]
-        detections = drop_superseded(
-            detections, sp_days_by_platform(in_area, aoi, args.start, args.end, coverage)
-        )
-    if len(detections):
-        detections = detections[detections["platform"].isin(platforms).to_numpy()]
+    # Distributions from the streamed totals; FRP percentiles from the last 12 months of
+    # individual detections (bounded memory), as in the API summary.
+    frp_start = max(args.start, args.end - timedelta(days=FRP_PERCENTILE_DAYS - 1))
+    frames = []
+    columns = ["platform", "frp_mw", "processing_status", "acquisition_date"]
+    for frame in iter_observations(processed, aoi, frp_start, args.end, columns=columns):
+        frame = drop_superseded(frame, area.sp_days)
+        frames.append(frame[frame["platform"].isin(platforms).to_numpy()])
+    frp = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    totals = area.totals[area.totals["platform"].isin(platforms)]
     payload = {
         **details,
         "kind": "analytics",
         "status": "baselines and anomalies are EXPERIMENTAL",
         "yearly": yearly_summary(series, args.metric).to_dict(orient="records"),
-        "distributions": platform_distributions(detections).to_dict(orient="records"),
+        "distributions": distributions_from_totals(totals, frp).to_dict(orient="records"),
+        "frp_percentile_period": {"start": frp_start, "end": args.end},
         "calendar": calendar.to_dict(orient="records"),
         "monthly_series": series.to_dict(orient="records"),
     }

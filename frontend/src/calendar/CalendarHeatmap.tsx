@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { fmt } from "../components/Status";
 import { CALENDAR_RAMP, PLATFORM_COLORS, STATE_LABELS, binEdges, cellStyle } from "../lib/colors";
 import type { CalendarCell, CellState, Metric, Platform } from "../types/api";
+import { DownloadImage } from "../components/DownloadImage";
+import { calendarSvg, fileSlug } from "../lib/exportImage";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const HATCH = "repeating-linear-gradient(45deg, transparent 0 4px, #383835 4px 6px)";
@@ -32,7 +34,9 @@ export function PlatformCalendar({
   edges,
   onSelect,
   selected,
+  subtitle = "",
 }: {
+  subtitle?: string;
   platform: Platform;
   cells: CalendarCell[];
   metric: Metric;
@@ -44,9 +48,24 @@ export function PlatformCalendar({
   const byKey = new Map(cells.map((c) => [`${c.year}-${c.month}`, c]));
   return (
     <section aria-label={`${platform} activity calendar`} className="mb-6">
-      <h3 className="mb-2 flex items-center gap-2 font-medium">
+      <h3 className="mb-2 flex flex-wrap items-center gap-2 font-medium">
         <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: PLATFORM_COLORS[platform] }} aria-hidden />
         {platform}
+        <span className="ml-2">
+          <DownloadImage
+            label={`${platform} calendar`}
+            filename={`firetrace_calendar_${fileSlug(platform)}_${fileSlug(subtitle)}`}
+            build={() =>
+              calendarSvg({
+                title: `${platform} burning activity calendar — ${METRIC_LABEL[metric]}`,
+                subtitle,
+                edges,
+                cells: cells.map((c) => ({ year: c.year, month: c.month, state: c.state, value: c.value, anomaly: c.anomaly })),
+                footer: "One satellite only; counts from different satellites are not comparable.",
+              })
+            }
+          />
+        </span>
       </h3>
       <table className="border-separate border-spacing-[2px] text-xs">
         <caption className="sr-only">
@@ -153,7 +172,15 @@ export function CalendarLegend({ edges }: { edges: number[] }) {
 }
 
 /** Calendars for every platform present, sharing one set of value bins. */
-export function CalendarHeatmap({ cells, metric }: { cells: CalendarCell[]; metric: Metric }) {
+export function CalendarHeatmap({
+  cells,
+  metric,
+  subtitle = "",
+}: {
+  cells: CalendarCell[];
+  metric: Metric;
+  subtitle?: string;
+}) {
   const [selected, setSelected] = useState<CalendarCell | null>(null);
   const edges = useMemo(() => binEdges(cells.map((c) => c.value ?? 0)), [cells]);
   const platforms = [...new Set(cells.map((c) => c.platform))];
@@ -172,6 +199,7 @@ export function CalendarHeatmap({ cells, metric }: { cells: CalendarCell[]; metr
           edges={edges}
           onSelect={setSelected}
           selected={selected}
+          subtitle={subtitle}
         />
       ))}
       {selected && (

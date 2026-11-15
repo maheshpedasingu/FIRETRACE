@@ -2,6 +2,8 @@
 import { describe, expect, it } from "vitest";
 import {
   areaParams,
+  circleName,
+  circlePolygon,
   bboxFromCorners,
   bboxText,
   crossesAntimeridian,
@@ -73,4 +75,37 @@ describe("dates and query parameters", () => {
     expect(saved.get("aoi_id")).toBe("3");
     expect(saved.has("bbox")).toBe(false);
   });
+
+  it("sends the containing country only when one is given", () => {
+    const bbox = { west: 68.1, south: 6.7, east: 97.4, north: 35.7 };
+    const base = { area: { kind: "bbox" as const, bbox }, start: "2001-01-01", end: "2001-12-31", platforms: [] };
+    expect(areaParams(base).get("country")).toBe(null);
+    expect(areaParams({ ...base, country: " India " }).get("country")).toBe("India");
+    expect(areaParams({ ...base, country: "  " }).get("country")).toBe(null);
+  });
+
+  it("builds a closed circle polygon with the requested radius", () => {
+    const c = circlePolygon(15, 80, 50);
+    expect(c.ok).toBe(true);
+    if (!c.ok) return;
+    const ring = c.value.coordinates[0];
+    expect(ring.length).toBe(65);
+    expect(ring[0]).toEqual(ring[64]);
+    // great-circle distance of every vertex from the centre is 50 km (± 1 m)
+    const rad = Math.PI / 180;
+    for (const [lon, lat] of ring) {
+      const dist = 6371.0088 * Math.acos(
+        Math.sin(15 * rad) * Math.sin(lat * rad) + Math.cos(15 * rad) * Math.cos(lat * rad) * Math.cos((lon - 80) * rad),
+      );
+      expect(Math.abs(dist - 50) < 0.001).toBe(true);
+    }
+  });
+
+  it("rejects invalid circles and ones crossing 180 degrees", () => {
+    expect(circlePolygon(15, 80, 0.5).ok).toBe(false);
+    expect(circlePolygon(95, 80, 10).ok).toBe(false);
+    expect(circlePolygon(-17, 179.9, 50).ok).toBe(false);
+    expect(circleName(15, 80, 50)).toBe("Circle 15.0000, 80.0000, 50 km");
+  });
 });
+

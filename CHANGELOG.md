@@ -1,5 +1,67 @@
 # Changelog
 
+## [1.1.0] - 2026-11-15
+Harmonized burning activity calendar, validated on 26 years of real FIRMS archive data
+for India (10,682,380 detections) and a 100 km circle over Punjab.
+
+### Added (Phase 7, harmonized calendar)
+- Harmonized burning activity calendar (`GET /api/calendar/harmonized`, dashboard
+  Calendar → "Harmonized (one calendar)", CSV export with provenance): one continuous
+  series in MODIS (Terra+Aqua)- or Suomi-NPP-equivalent units, with per-month source,
+  conversion factor, validation uncertainty, history comparison and the conversion fits.
+- Latest month vs the median of earlier complete years, and the typical fire season.
+- Dashboard "Inside country" field and an India example, so FIRMS country downloads
+  count as coverage for areas inside that country.
+- Download the harmonized and per-satellite calendars and the monthly charts as PNG or
+  SVG; images are built from the data with title, area, period, units, legend and the
+  NASA FIRMS credit.
+- "Point + radius (km)" area: a latitude/longitude and a radius become a saved circle
+  polygon (64 vertices on the sphere; circles crossing 180° or reaching a pole are
+  refused with a message).
+- `python -m app.cli.area_profile`: time and peak memory of each dashboard step.
+
+### Fixed (Phase 7)
+- A conversion factor whose held-out error exceeds 100 % of the mean is now `rejected`
+  and not applied (previously it was used with its large uncertainty shown).
+- Out of memory: opening the dashboard on India 2000–2026 made the user's laptop stop
+  responding. Area queries loaded every cell-day of the area and period at once
+  (several GB per copy), once per parallel request. Area statistics are now computed
+  one aggregate month at a time (`app/analytics/area_stream.py`), keeping only small
+  per-month results, totals, unique-cell ids and SP days; the CLIs (area summary,
+  anomaly report, exports) use the same path. Verified identical to the in-memory path
+  by test. New `python -m app.cli.area_profile` prints time and peak memory per step.
+- Every dashboard page was slow on 26 years of real India data (10.7 million
+  detections): each request rescanned ~4,500 files for stale aggregates, re-read every
+  aggregate month, and Overview/Analytics read all detections; pages send several
+  requests at once, so this ran in parallel. Now: a store-generation marker (bumped by
+  imports and compaction) gates the aggregate check, which is locked against concurrent
+  builds; one cached area context per query is shared by all requests; the summary is
+  computed from cell-day aggregates, with FRP median / percentiles from the last 12
+  months of the period (labelled); hotspot totals come from aggregates and reading stops
+  once a page is full.
+- Overview summary crashed (KeyError 'processing_status') once standard-processing data
+  existed: it read detections without the column the SP-supersedes-NRT rule needs.
+- A month cut short by the selected period (e.g. 1–7 Nov) was "complete" if every
+  selected day was covered, so 7 days were compared with full Novembers (found on the
+  real India calendar: "0.30 × the median"). "Complete" now means the whole calendar
+  month is covered; such months are partial, and the dashboard compares the latest
+  complete month with history.
+- FIRMS Archive Download VIIRS S-NPP files (found on the first real import): instrument
+  and satellite `SNPP`, and `bright_t31` holding the VIIRS I5 temperature, are now
+  read correctly. Unconfirmed instrument values are still rejected.
+- MODIS archive version `6.03` is now labelled Collection 6 (was "unknown"); `61.03`
+  stays Collection 6.1.
+- Coverage no longer starts before a platform's first FIRMS record (e.g. Aqua before
+  4 July 2002), which would otherwise show false real zeros for archive requests that
+  reach back before a satellite's launch; likewise after its last record (Suomi-NPP
+  ends 2026-11-02). NOAA-21 data start corrected to 2023-03-01 (FIRMS Archive Download).
+- Archive files mixing SP and NRT records: SP coverage now ends on the last SP day and
+  NRT covers the days after it. Before, SP appeared to cover the NRT months and the
+  SP-supersedes-NRT rule would have dropped real NRT detections.
+- Multi-decade queries: the monthly series groups rows once instead of scanning per
+  month; MODIS–VIIRS detection matching uses the last 366 days of the period so memory
+  stays bounded (the monthly calibration still uses the whole period).
+
 ## [1.0.0] - 2026-11-14
 ### Added (release)
 - MIT `LICENSE`; dashboard screenshots in `docs/screenshots/` and the README.

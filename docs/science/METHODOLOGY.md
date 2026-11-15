@@ -49,7 +49,13 @@ overpass timing and small or cool fires all cause omissions.
    sensor's mean modified z. It is a dimensionless anomaly score relative to each
    platform's own history, **not a calibrated fire count**, and raw MODIS and VIIRS
    counts are never added.
-8. **Calendar and analytics.** Years × months per platform with states value, zero,
+8. **Harmonized calendar (experimental).** One continuous calendar in the units of a
+   reference sensor (MODIS Terra+Aqua by default, or Suomi-NPP VIIRS): months measured
+   by other platforms are converted with an area-specific factor fitted where both
+   overlap and tested on held-out years; each month shows its source and uncertainty.
+   Coverage never starts before a platform's first FIRMS record, so no false zeros
+   appear before a satellite's launch. Details: `harmonization.md`.
+9. **Calendar and analytics.** Years × months per platform with states value, zero,
    partial, uncovered and missing; yearly totals and year-over-year change only for
    complete years; FRP, confidence and day/night distributions.
 
@@ -76,7 +82,10 @@ overpass timing and small or cool fires all cause omissions.
   country areas must be supplied as GeoJSON.
 - NRT/SP supersession works per platform-day: SP data covering only part of an area on a
   day still removes that day's NRT records for the area.
-- Detection matching groups by UTC day, so pairs straddling midnight UTC are not matched.
+- Detection matching groups by UTC day, so pairs straddling midnight UTC are not matched,
+  and it uses only the last 366 days of the selected period (memory).
+- FIRMS country downloads count as coverage only for areas the user states lie inside
+  that country ("Inside country"); the country border itself is not bundled.
 - MODIS confidence has regionally varying meaning (NASA guidance); classes are kept
   but not used to drop records unless the user filters by them.
 

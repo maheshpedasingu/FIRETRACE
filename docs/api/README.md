@@ -28,12 +28,13 @@ with a message; unknown AOI → 404.
 | GET | `/api/hotspots` | detections, paginated (`page`, `page_size` ≤ 5000); filters `confidence`, `daynight`; `include_source` adds the original row |
 | GET | `/api/hotspots/summary` | totals, per-platform detections / unique cells / coverage months, distributions |
 | GET | `/api/calendar` | years × months per platform with states value / zero / partial / uncovered / missing |
+| GET | `/api/calendar/harmonized` | EXPERIMENTAL one calendar in reference units (`reference=modis|viirs`, `metric`): per month value, source, factor, uncertainty, note; plus the conversion fits |
 | GET | `/api/analytics/monthly` | coverage-aware monthly series |
 | GET | `/api/analytics/yearly` | yearly totals, year-over-year for complete years |
 | GET | `/api/analytics/anomalies` | EXPERIMENTAL modified z per platform (`target=YYYY-MM`) + harmonized index |
 | GET | `/api/analytics/sensor-comparison` | EXPERIMENTAL MODIS–VIIRS calibration and detection matching |
 | GET / POST | `/api/aoi` | list / save AOIs (`bbox` or GeoJSON Polygon/MultiPolygon, validated with Shapely) |
-| GET | `/api/export/csv` | `kind=hotspots|calendar`; `bundle=true` adds the provenance JSON in a zip |
+| GET | `/api/export/csv` | `kind=hotspots|calendar|harmonized_calendar` (`reference=modis|viirs`); `bundle=true` adds the provenance JSON in a zip |
 | GET | `/api/export/report` | EXPERIMENTAL report, `format=json|md` |
 
 ## Status codes

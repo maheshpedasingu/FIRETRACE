@@ -10,6 +10,7 @@ from app.analytics.baselines import DEFAULT_MIN_HISTORY_YEARS
 from app.api.deps import AreaParams, Services, ServicesDep, load_coverage, resolve_area
 from app.api.serialize import to_jsonable
 from app.services import area_analysis as aa
+from app.storage import generation
 
 router = APIRouter(tags=["analytics"])
 
@@ -20,7 +21,7 @@ AreaDep = Annotated[AreaParams, Depends()]
 def _ctx(services: Services, area: AreaParams) -> aa.AreaContext:
     aoi = resolve_area(services, area.bbox, area.aoi_id, area.country)
     return aa.context(services.aggregates, load_coverage(services), aoi, area.start, area.end,
-                      area.platforms)  # fmt: skip
+                      area.platforms, generation.current(services.processed))  # fmt: skip
 
 
 @router.get("/hotspots")
@@ -63,6 +64,20 @@ def calendar(
     """Years × months per platform; states value / zero / partial / uncovered / missing."""
     table = aa.calendar_table(_ctx(services, area), metric, min_history_years)
     return to_jsonable({"metric": metric, "cells": table})
+
+
+@router.get("/calendar/harmonized")
+def harmonized_calendar(
+    services: ServicesDep,
+    area: AreaDep,
+    reference: Literal["modis", "viirs"] = "modis",
+    metric: Metric = "detections",
+    min_history_years: Annotated[int, Query(ge=1, le=30)] = DEFAULT_MIN_HISTORY_YEARS,
+) -> dict:
+    """EXPERIMENTAL: one MODIS–VIIRS calendar in a reference sensor's units, with the
+    conversion fits (factor, validation error) that produced it."""
+    result = aa.harmonized_calendar(_ctx(services, area), reference, metric, min_history_years)
+    return to_jsonable(result)
 
 
 @router.get("/analytics/monthly")

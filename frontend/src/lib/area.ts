@@ -17,6 +17,12 @@ export interface AreaQuery {
   start: string; // YYYY-MM-DD (UTC)
   end: string;
   platforms: string[]; // empty = all
+  /**
+   * Country the whole area lies inside, for coverage only. A FIRMS country download
+   * records its coverage as that country (its border is not bundled), so it counts as
+   * covering an area only when the user states the area lies inside it.
+   */
+  country?: string;
 }
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -105,6 +111,7 @@ export function areaParams(
   else params.set("aoi_id", String(q.area.id));
   params.set("start", q.start);
   params.set("end", q.end);
+  if (q.country && q.country.trim()) params.set("country", q.country.trim());
   for (const p of q.platforms) params.append("platform", p);
   for (const [key, value] of Object.entries(extra)) {
     if (value === undefined) continue;
@@ -125,9 +132,64 @@ export function daysBefore(today: Date, days: number): string {
 }
 
 /** Optional example presets. FIRETRACE has no default region. */
-export const EXAMPLE_AREAS: { label: string; bbox: BBox }[] = [
+export const EXAMPLE_AREAS: { label: string; bbox: BBox; country?: string }[] = [
   { label: "Example: Andhra Pradesh, India (approx. bbox)", bbox: { west: 76.7, south: 12.6, east: 84.8, north: 19.9 } },
+  {
+    label: "Example: India (whole country, for an India country download)",
+    bbox: { west: 68.1, south: 6.7, east: 97.4, north: 35.7 },
+    country: "India",
+  },
   { label: "Example: Amazon arc of deforestation, Brazil", bbox: { west: -65, south: -15, east: -45, north: -3 } },
   { label: "Example: Northern Australia", bbox: { west: 120, south: -20, east: 145, north: -11 } },
   { label: "Example: Fiji (crosses 180°)", bbox: { west: 176, south: -21, east: -178, north: -15 } },
 ];
+
+const EARTH_RADIUS_KM = 6371.0088; // mean Earth radius (IUGG)
+
+/**
+ * Closed GeoJSON polygon approximating a circle of ``radiusKm`` around a point
+ * (``segments`` vertices on the sphere, great-circle destination formula). Circles that
+ * would cross the 180° meridian or reach a pole are rejected: use a bounding box there.
+ */
+export function circlePolygon(
+  lat: number,
+  lon: number,
+  radiusKm: number,
+  segments = 64,
+): Result<{ type: "Polygon"; coordinates: number[][][] }> {
+  if (![lat, lon, radiusKm].every(Number.isFinite)) return { ok: false, error: "Latitude, longitude and radius must be numbers" };
+  if (Math.abs(lat) > 90) return { ok: false, error: "Latitude must be between -90 and 90" };
+  if (Math.abs(lon) > 180) return { ok: false, error: "Longitude must be between -180 and 180" };
+  if (radiusKm < 1 || radiusKm > 1000) return { ok: false, error: "Radius must be between 1 and 1000 km" };
+  const rad = Math.PI / 180;
+  const d = radiusKm / EARTH_RADIUS_KM;
+  const phi1 = lat * rad;
+  const lambda1 = lon * rad;
+  const ring: number[][] = [];
+  for (let i = 0; i < segments; i++) {
+    const bearing = (2 * Math.PI * i) / segments;
+    const phi2 = Math.asin(Math.sin(phi1) * Math.cos(d) + Math.cos(phi1) * Math.sin(d) * Math.cos(bearing));
+    const lambda2 =
+      lambda1 + Math.atan2(Math.sin(bearing) * Math.sin(d) * Math.cos(phi1), Math.cos(d) - Math.sin(phi1) * Math.sin(phi2));
+    const lonDeg = lambda2 / rad;
+    if (lonDeg > 180 || lonDeg < -180) {
+      return { ok: false, error: "This circle crosses the 180° meridian; use a bounding box instead" };
+    }
+    if (Math.abs(phi2 / rad) >= 89.9) return { ok: false, error: "This circle reaches a pole; use a bounding box instead" };
+    ring.push([Number(lonDeg.toFixed(6)), Number((phi2 / rad).toFixed(6))]);
+  }
+  ring.push([...ring[0]]);
+  return { ok: true, value: { type: "Polygon", coordinates: [ring] } };
+}
+
+/** Stable name for a circle area, so re-applying the same circle reuses its saved AOI. */
+export function circleName(lat: number, lon: number, radiusKm: number): string {
+  return `Circle ${lat.toFixed(4)}, ${lon.toFixed(4)}, ${radiusKm} km`;
+}
+
+/** One-line description of an area query for image subtitles and file names. */
+export function describeQuery(q: AreaQuery): string {
+  const area = q.area.kind === "aoi" ? `Area "${q.area.name}"` : `Area ${bboxText(q.area.bbox)}`;
+  const country = q.country ? ` (inside ${q.country})` : "";
+  return `${area}${country} · ${q.start} → ${q.end} (UTC)`;
+}

@@ -71,9 +71,23 @@ SATELLITE_CODES: dict[Sensor, dict[str, Platform]] = {
     },
     Sensor.VIIRS: {
         "n": Platform.SUOMI_NPP,
+        # FIRMS Archive Download VIIRS S-NPP files (seen 2026-11-15 in a real India
+        # download, fire_archive_SV-C2_*.csv and fire_nrt_SV-C2_*.csv) use "SNPP".
+        "snpp": Platform.SUOMI_NPP,
         "n20": Platform.NOAA_20,
         "n21": Platform.NOAA_21,
     },
+}
+
+# Values of the ``instrument`` column, upper-cased. The Area API writes MODIS / VIIRS;
+# FIRMS Archive Download VIIRS S-NPP files write "SNPP" (seen in a real file,
+# 2026-11-15). Only values seen in real FIRMS files are listed; anything else is
+# rejected with an error rather than guessed (NOAA-20/21 archive values are not yet
+# confirmed).
+INSTRUMENT_VALUES: dict[str, Sensor] = {
+    "MODIS": Sensor.MODIS,
+    "VIIRS": Sensor.VIIRS,
+    "SNPP": Sensor.VIIRS,
 }
 
 VIIRS_CONFIDENCE: dict[str, ConfidenceClass] = {
@@ -110,7 +124,9 @@ REQUIRED_COMMON = ("latitude", "longitude", "acq_date", "acq_time")
 # Brightness columns: (primary, secondary) per sensor, in order of preference.
 BRIGHTNESS_COLUMNS: dict[Sensor, tuple[tuple[str, ...], tuple[str, ...]]] = {
     Sensor.MODIS: (("brightness",), ("bright_t31",)),
-    Sensor.VIIRS: (("bright_ti4", "brightness"), ("bright_ti5",)),
+    # Archive Download VIIRS files name the I4/I5 brightness temperatures "brightness" /
+    # "bright_t31" (MODIS-style column names); the values are the VIIRS I4/I5 channels.
+    Sensor.VIIRS: (("bright_ti4", "brightness"), ("bright_ti5", "bright_t31")),
 }
 
 CANONICAL_COLUMNS: tuple[str, ...] = (

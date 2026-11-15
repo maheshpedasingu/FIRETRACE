@@ -5,6 +5,8 @@ import type {
   Anomalies,
   Availability,
   CalendarCell,
+  HarmonizedCalendar,
+  HarmonizedReference,
   HealthResponse,
   Hotspot,
   IngestRun,
@@ -78,6 +80,12 @@ export const fetchHotspots = (
 
 export const fetchCalendar = (q: AreaQuery, metric: Metric, signal?: AbortSignal) =>
   get<{ metric: Metric; cells: CalendarCell[] }>("/api/calendar", areaParams(q, { metric }), signal);
+export const fetchHarmonizedCalendar = (
+  q: AreaQuery,
+  metric: Metric,
+  reference: HarmonizedReference,
+  signal?: AbortSignal,
+) => get<HarmonizedCalendar>("/api/calendar/harmonized", areaParams(q, { metric, reference }), signal);
 export const fetchMonthly = (q: AreaQuery, signal?: AbortSignal) =>
   get<{ months: MonthRow[] }>("/api/analytics/monthly", areaParams(q), signal);
 export const fetchYearly = (q: AreaQuery, metric: Metric, signal?: AbortSignal) =>
@@ -120,13 +128,20 @@ export const fetchFirms = (body: {
 
 export function exportCsvUrl(
   q: AreaQuery,
-  kind: "hotspots" | "calendar",
-  opts: { bundle?: boolean; metric?: Metric; confidence?: string[]; daynight?: string[] } = {},
+  kind: "hotspots" | "calendar" | "harmonized_calendar",
+  opts: {
+    bundle?: boolean;
+    metric?: Metric;
+    reference?: HarmonizedReference;
+    confidence?: string[];
+    daynight?: string[];
+  } = {},
 ): string {
   const params = areaParams(q, {
     kind,
     bundle: opts.bundle ? true : undefined,
     metric: opts.metric,
+    reference: opts.reference,
     confidence: opts.confidence,
     daynight: opts.daynight,
   });

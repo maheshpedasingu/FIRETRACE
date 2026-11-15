@@ -20,9 +20,10 @@ from pathlib import Path
 
 import pandas as pd
 
+from app.analytics.area_stream import stream_area
 from app.analytics.baselines import DEFAULT_MIN_HISTORY_YEARS, assess, assess_all, harmonized_index
 from app.analytics.report import build_report, to_markdown
-from app.analytics.series import AreaBBox, monthly_series
+from app.analytics.series import AreaBBox, latest_whole_month
 from app.cli.area_summary import load_coverage
 from app.cli.args import attach_negative_values
 from app.core.config import Settings, get_settings
@@ -85,14 +86,13 @@ def run(argv: list[str] | None = None, *, settings: Settings | None = None, out=
     west, south, east, north = (float(v) for v in args.bbox.split(","))
     aoi = AreaBBox(west, south, east, north, country=args.country)
     platforms = MODIS + VIIRS
-    series = monthly_series(
-        store.read(start=args.start, end=args.end),
-        aoi, args.start, args.end, load_coverage(settings), platforms,
-    )  # fmt: skip
+    series = stream_area(
+        store, aoi, args.start, args.end, load_coverage(settings), platforms
+    ).series  # one aggregate month at a time (bounded memory)
     if args.target:
         ty, tm = (int(x) for x in args.target.split("-"))
     else:
-        ty, tm = args.end.year, args.end.month
+        ty, tm = latest_whole_month(args.start, args.end)
     target = pd.DataFrame(
         [assess(series, p, ty, tm, args.metric, args.min_history_years).__dict__ for p in platforms]
     )

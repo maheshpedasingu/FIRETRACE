@@ -5,9 +5,11 @@ Earth-observation platform that integrates NASA FIRMS MODIS (Terra, Aqua; C6.1) 
 VIIRS 375 m (Suomi-NPP, NOAA-20, NOAA-21; C2) active-fire detections into a
 sensor-aware, harmonized historical burning-activity calendar for any area on Earth.
 
-> Status: feature-complete (v1.0 delivery), verified on Windows. Real data processed so
-> far is small (see `docs/DATA_PROVENANCE.md`); anomaly and cross-sensor analytics are
-> experimental until validated on real multi-year archives. Verified checkpoints:
+> Status: v1.1 — harmonized burning activity calendar, verified on Windows with 26 years
+> of real FIRMS archive data for India (10.7 million MODIS and VIIRS detections; see
+> `docs/validation/india_harmonization.md`). Coverage exists only for what was imported
+> (`docs/DATA_PROVENANCE.md`). Harmonization, anomaly and cross-sensor analytics remain
+> labelled experimental. Verified checkpoints:
 > `PROJECT_PROGRESS.md`. Final report: `docs/FINAL_REPORT.md`.
 
 ## Scope
@@ -45,6 +47,11 @@ show "—" or hatched months because no data was imported for them there.
 | ![Calendar: one row per satellite, partial and missing months marked](docs/screenshots/calendar.png) | ![Analytics: monthly series per satellite](docs/screenshots/analytics-charts.png) |
 
 ![Analytics tables: yearly totals, FRP and confidence, experimental anomalies and MODIS–VIIRS comparison](docs/screenshots/analytics-tables.png)
+
+v1.1, real data — harmonized calendar for India, 2000-11 to 2026-11, exported from the
+Calendar page (≈ marks months converted from Terra alone before Aqua's first record):
+
+![Harmonized burning activity calendar for India in MODIS (Terra+Aqua)-equivalent detections](docs/screenshots/harmonized-calendar-india.png)
 
 ## Data sources
 
@@ -131,6 +138,20 @@ python -m app.cli.import_archive E:\path\to\firms_downloads
 
 See `docs/architecture/storage.md` for options (platform, coverage bbox/country and dates).
 
+**Archive Download Tool requests** (e.g. country India, MODIS + VIIRS S-NPP,
+2000-11-01 to 2026-11-07) carry no coverage in their file names, so declare it exactly
+as requested:
+
+```powershell
+python -m app.cli.import_archive E:\FIRETRACE_WORKSPACE\downloads\<file>.zip --country India --start 2000-11-01 --end 2026-11-07
+```
+
+Coverage is then clipped automatically to each satellite's FIRMS record (Aqua from
+2002-07-04, Suomi-NPP 2012-01-20 to 2026-11-02, …) and split between standard (SP) and
+near-real-time (NRT) records at the last SP day. In the dashboard, enter the country in
+**Inside country** (or pick the India example) so the country coverage counts for the
+area; use it only for areas that lie entirely inside that country.
+
 ## Fetching recent data from the FIRMS API
 
 Needs `FIRMS_MAP_KEY` in `backend/.env`. From `backend/`:
@@ -151,6 +172,25 @@ with coverage status (blank = no data, not zero):
 ```powershell
 python -m app.cli.area_summary --bbox 76.7,12.6,84.8,19.9 --start 2026-11-01 --end 2026-11-14
 ```
+
+## Dashboard
+
+Choose an area (example, saved area, bounding box, or **Point + radius**), a period and
+optional satellites. Pages: Overview (totals and imported coverage), Map, Calendar
+(**Harmonized** one-calendar view in MODIS- or VIIRS-equivalent units, or one calendar
+per satellite), Analytics, Data explorer, Ingestion and Export. Calendars and charts can
+be downloaded as PNG or SVG; data as CSV with provenance.
+
+## Checking time and memory for a large area
+
+Before opening the dashboard on a very large area or long period, measure it from the
+command line (read-only; stop with Ctrl+C):
+
+```powershell
+python -m app.cli.area_profile --bbox 68.1,6.7,97.4,35.7 --country India --start 2000-11-01 --end 2026-11-07
+```
+
+It prints the elapsed time and peak memory of each step the dashboard runs.
 
 ## Anomaly and validation report (experimental)
 

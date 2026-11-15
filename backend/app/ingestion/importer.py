@@ -22,7 +22,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -85,11 +85,28 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+def _note_observed(observed: dict[tuple[str, str], tuple[date, date]], part: pd.DataFrame) -> None:
+    """Widen the first/last acquisition date seen per (platform, processing status)."""
+    keys = pd.DataFrame(
+        {
+            "platform": part["platform"].astype(str).to_numpy(),
+            "status": part["processing_status"].astype(str).to_numpy(),
+            "day": pd.to_datetime(part["acquisition_date"]).to_numpy(),
+        }
+    )
+    for (platform, status), days in keys.groupby(["platform", "status"])["day"]:
+        first, last = days.min().date(), days.max().date()
+        if (platform, status) in observed:
+            old_first, old_last = observed[(platform, status)]
+            first, last = min(first, old_first), max(last, old_last)
+        observed[(platform, status)] = (first, last)
+
+
 def _coverage_rows(
     run_id: str,
     options: ImportOptions,
     archive_specs: dict[str, CoverageSpec],
-    observed: set[tuple[str, str]],
+    observed: dict[tuple[str, str], tuple[date, date]],
 ) -> list[CoverageRecord]:
     """Coverage rows: declared specs, else archive file names, else 'unknown'.
 
@@ -97,6 +114,12 @@ def _coverage_rows(
     each platform the request covered (``coverage_platforms``, else the declared
     platform), so a covered platform with zero detections still counts as covered.
     Platforms neither seen nor covered by the request are not claimed.
+
+    Archive files mix standard-processing (SP) records with near-real-time (NRT) records
+    for the most recent months. When one platform has SP and other statuses in the same
+    file, SP coverage ends on the last SP day and the other statuses cover the days
+    after it; otherwise SP would appear to cover the NRT months and the SP-supersedes-NRT
+    rule would drop real NRT detections.
     """
     specs = options.coverage or list(archive_specs.values()) or [UNKNOWN_COVERAGE]
     combos = set(observed)
@@ -109,16 +132,27 @@ def _coverage_rows(
             combos.add((platform.value, status))
     if not combos:
         combos = {(None, None)}  # nothing seen, nothing declared: record extent only
+    sp = ProcessingStatus.SP.value
+    last_sp = {p: observed[(p, s)][1] for p, s in observed if s == sp}
     rows = []
     for spec in specs:
         for platform, status in sorted(combos, key=lambda c: (str(c[0]), str(c[1]))):
+            start, end = spec.start_date, spec.end_date
+            split = platform in last_sp and any(p == platform and s != sp for p, s in combos)
+            if split and start is not None and end is not None:
+                if status == sp:
+                    end = min(end, last_sp[platform])
+                else:
+                    start = max(start, last_sp[platform] + timedelta(days=1))
+                if start > end:
+                    continue
             rows.append(
                 CoverageRecord(
                     run_id=run_id,
                     platform=platform,
                     processing_status=status,
-                    start_date=spec.start_date,
-                    end_date=spec.end_date,
+                    start_date=start,
+                    end_date=end,
                     extent_type=spec.extent_type,
                     extent_value=spec.extent_value,
                     basis=spec.basis,
@@ -199,7 +233,8 @@ def import_file(
     seen_in_file: set[str] = set()
     partition_ids: dict[PartitionKey, set[str]] = {}
     archive_specs: dict[str, CoverageSpec] = {}
-    observed: set[tuple[str, str]] = set()
+    # (platform, processing status) -> (first, last) acquisition date seen in the file
+    observed: dict[tuple[str, str], tuple[date, date]] = {}
     committed = False
     buffer: dict[PartitionKey, list[pd.DataFrame]] = {}
     buffered = 0
@@ -261,13 +296,7 @@ def import_file(
                     result.rows_already_stored += len(part) - len(new)
                     # Coverage reflects every platform present in the file, including
                     # rows that were already stored by an earlier import.
-                    observed.update(
-                        zip(
-                            part["platform"].astype(str),
-                            part["processing_status"].astype(str),
-                            strict=True,
-                        )
-                    )
+                    _note_observed(observed, part)
                     if len(new):
                         buffer.setdefault(key, []).append(new)
                         buffered += len(new)

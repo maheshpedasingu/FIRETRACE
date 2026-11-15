@@ -133,6 +133,61 @@ def test_summary_calendar_and_analytics(client):
     assert {c["status"] for c in comparison["calibration"]} == {"unavailable"}
 
 
+def test_hotspot_totals_from_aggregates_match_a_full_scan(client):
+    upload(client)
+    expected = {  # SYNTHETIC rows: n/D, l/D, h/N
+        (): 3, ("confidence", "high"): 1, ("confidence", "low"): 1,
+        ("daynight", "D"): 2, ("daynight", "N"): 1,
+    }  # fmt: skip
+    for key, total in expected.items():
+        params = AREA | ({key[0]: key[1]} if key else {})
+        body = client.get("/api/hotspots", params=params | {"page_size": 1}).json()
+        assert body["total"] == total, key
+        assert len(body["items"]) == 1
+    both = client.get("/api/hotspots", params=AREA | {"confidence": "high", "daynight": "D"})
+    assert both.json()["total"] == 0  # combined filters: counted by a full scan
+
+
+def test_import_changes_the_store_generation_and_cached_results(client):
+    from app.storage import generation
+
+    processed = Path(client.settings.processed_data_dir)
+    before = generation.current(processed)
+    empty = client.get("/api/hotspots/summary", params=AREA).json()
+    assert empty["total_detections"] == 0
+    upload(client)
+    assert generation.current(processed) != before
+    after = client.get("/api/hotspots/summary", params=AREA).json()
+    assert after["total_detections"] == 3  # not the cached empty result
+    assert after["frp_percentile_period"] == {"start": "2026-11-01", "end": "2026-11-14"}
+
+
+def test_summary_with_standard_processing_data(client):
+    """Regression (real India archive): with SP data present, the summary read detections
+    without processing_status and the SP-supersedes-NRT step raised KeyError."""
+    sp_rows = ROWS.replace(",2.0NRT,", ",2,")  # same SYNTHETIC rows as standard processing
+    assert upload(client, HEADER + sp_rows, name="SYNTHETIC_sp.csv").status_code == 200
+    summary = client.get("/api/hotspots/summary", params=AREA)
+    assert summary.status_code == 200, summary.text
+    assert summary.json()["total_detections"] == 3
+
+
+def test_harmonized_calendar_never_converts_without_a_fitted_factor(client):
+    upload(client)  # NOAA-20 only: no overlap with MODIS, so no conversion factor exists
+    body = client.get("/api/calendar/harmonized", params=AREA).json()
+    assert body["status"] == "EXPERIMENTAL"
+    assert body["reference_source"] == "MODIS (Terra+Aqua)"
+    n20 = next(f for f in body["fits"] if f["source"] == "NOAA-20")
+    assert n20["status"] == "unavailable" and n20["factor"] is None
+    (nov,) = body["cells"]
+    assert (nov["year"], nov["month"], nov["state"], nov["value"]) == (2026, 11, "missing", None)
+    assert "NOAA-20" in nov["note"] and "no conversion factor" in nov["note"]
+    viirs = client.get("/api/calendar/harmonized", params=AREA | {"reference": "viirs"}).json()
+    assert viirs["reference_source"] == "Suomi-NPP"
+    bad = client.get("/api/calendar/harmonized", params=AREA | {"reference": "landsat"})
+    assert bad.status_code == 422
+
+
 def test_aoi_create_list_validate_and_use(client):
     upload(client)
     # polygon around the two detections at 15.1N 80.2E only
@@ -176,6 +231,13 @@ def test_exports(client):
     assert len(names) == 2 and any(n.endswith(".provenance.json") for n in names)
     cal = client.get("/api/export/csv", params=AREA | {"kind": "calendar"})
     assert "state" in cal.text.splitlines()[0]
+    harm = client.get("/api/export/csv", params=AREA | {"kind": "harmonized_calendar",
+                                                        "bundle": "true"})  # fmt: skip
+    files = zipfile.ZipFile(io.BytesIO(harm.content))
+    csv_name = next(n for n in files.namelist() if n.endswith(".csv"))
+    assert "source" in files.read(csv_name).decode().splitlines()[0]
+    prov = json.loads(files.read(csv_name + ".provenance.json"))
+    assert prov["kind"].startswith("harmonized") and prov["conversion_fits"]
     report = client.get("/api/export/report", params=AREA).json()
     assert report["status"].startswith("EXPERIMENTAL")
     md = client.get("/api/export/report", params=AREA | {"format": "md"})
@@ -228,7 +290,7 @@ def test_openapi_lists_all_spec_endpoints(client):
     expected = {
         "/api/health", "/api/sensors", "/api/data/availability", "/api/ingest/upload",
         "/api/ingest/firms", "/api/ingest/history", "/api/hotspots", "/api/hotspots/summary",
-        "/api/calendar", "/api/analytics/monthly", "/api/analytics/yearly",
+        "/api/calendar", "/api/calendar/harmonized", "/api/analytics/monthly", "/api/analytics/yearly",
         "/api/analytics/anomalies", "/api/analytics/sensor-comparison", "/api/aoi",
         "/api/export/csv", "/api/export/report",
     }  # fmt: skip

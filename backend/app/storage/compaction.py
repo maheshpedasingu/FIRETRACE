@@ -23,6 +23,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from app.storage import generation
 from app.storage.observation_store import ObservationStore
 from app.storage.partitioning import PartitionKey
 
@@ -89,6 +90,7 @@ def compact_partition(store: ObservationStore, key: PartitionKey) -> tuple[int, 
     os.replace(directory, old)
     os.replace(staging, directory)
     shutil.rmtree(old)
+    generation.bump(store.root)
     return len(files), len(frame)
 
 

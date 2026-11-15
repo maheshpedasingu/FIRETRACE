@@ -29,6 +29,7 @@ export function ExportPage() {
         <Download href={exportCsvUrl(query, "hotspots", { bundle: true })} label="Detections + provenance (ZIP)" hint="CSV plus a provenance JSON: sources with SHA-256, filters, caveats." />
         <Download href={exportCsvUrl(query, "calendar")} label="Activity calendar (CSV)" hint="Years × months per platform with state (value / zero / partial / uncovered / missing)." />
         <Download href={exportCsvUrl(query, "calendar", { bundle: true })} label="Calendar + provenance (ZIP)" hint="Calendar CSV plus its provenance JSON." />
+        <Download href={exportCsvUrl(query, "harmonized_calendar", { bundle: true })} label="Harmonized calendar + provenance (ZIP, experimental)" hint="One MODIS-equivalent calendar: value, source sensor, conversion factor and uncertainty per month; the provenance JSON holds every conversion fit." />
         <Download href={reportUrl(query, "json")} label="Analytics report (JSON)" hint="Monthly series, anomalies, cross-sensor diagnostics — experimental." />
         <Download href={reportUrl(query, "md")} label="Analytics report (Markdown)" hint="Readable version of the report, with limitations." />
       </ul>

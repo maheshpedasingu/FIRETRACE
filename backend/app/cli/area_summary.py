@@ -20,7 +20,8 @@ from pathlib import Path
 import pandas as pd
 from sqlalchemy import select
 
-from app.analytics.series import AreaBBox, monthly_series
+from app.analytics.area_stream import stream_area
+from app.analytics.series import AreaBBox
 from app.cli.args import attach_negative_values
 from app.core.config import Settings, get_settings
 from app.database.models import CoverageRecord
@@ -80,14 +81,8 @@ def run(argv: list[str] | None = None, *, settings: Settings | None = None, out=
     west, south, east, north = (float(v) for v in args.bbox.split(","))
     aoi = AreaBBox(west, south, east, north, country=args.country)
     platforms = args.platform or [p.value for p in Platform]
-    table = monthly_series(
-        store.read(start=args.start, end=args.end),
-        aoi,
-        args.start,
-        args.end,
-        load_coverage(settings),
-        platforms,
-    )
+    # One aggregate month at a time: memory stays bounded for decades of data.
+    table = stream_area(store, aoi, args.start, args.end, load_coverage(settings), platforms).series
     with pd.option_context("display.width", 200, "display.max_columns", 30):
         out(table.to_string(index=False))
     if args.csv:

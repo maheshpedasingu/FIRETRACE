@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "FIRETRACE"
-    app_version: str = "1.0.0"
+    app_version: str = "1.1.0"
 
     firms_map_key: SecretStr | None = None
     firms_api_base: str = "https://firms.modaps.eosdis.nasa.gov/api"

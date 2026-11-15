@@ -10,6 +10,7 @@ import {
   fetchSummary,
   fetchYearly,
 } from "../services/api";
+import { describeQuery } from "../lib/area";
 import { useArea } from "../state/AreaContext";
 import type { Metric, Platform } from "../types/api";
 
@@ -33,9 +34,9 @@ export function AnalyticsPage() {
         <AsyncView state={monthly} what="monthly analytics">
           {(d) => (
             <div className="grid gap-4 lg:grid-cols-2">
-              <MonthlyChart rows={d.months} field="detections" title="Detections per month" />
-              <MonthlyChart rows={d.months} field="unique_cells" title="Unique active 1 km cells per month" />
-              <MonthlyChart rows={d.months} field="frp_sum_mw" title="Summed FRP per month (MW)" />
+              <MonthlyChart rows={d.months} field="detections" title="Detections per month" subtitle={query ? describeQuery(query) : ""} />
+              <MonthlyChart rows={d.months} field="unique_cells" title="Unique active 1 km cells per month" subtitle={query ? describeQuery(query) : ""} />
+              <MonthlyChart rows={d.months} field="frp_sum_mw" title="Summed FRP per month (MW)" subtitle={query ? describeQuery(query) : ""} />
             </div>
           )}
         </AsyncView>
@@ -99,6 +100,12 @@ export function AnalyticsPage() {
               <table className="w-full text-sm">
                 <caption className="mb-1 text-left text-xs text-[var(--text-secondary)]">
                   FRP is per detected pixel (MW), not burned area; MODIS and VIIRS FRP are not directly comparable.
+                  {s.frp_percentile_period && s.frp_percentile_period.start !== s.period.start && (
+                    <>
+                      {" "}Counts and FRP max cover the whole period; FRP median and p90 use detections from{" "}
+                      {s.frp_percentile_period.start} to {s.frp_percentile_period.end} (last 12 months).
+                    </>
+                  )}
                 </caption>
                 <thead className="text-left text-[var(--text-secondary)]">
                   <tr>
@@ -122,10 +129,10 @@ export function AnalyticsPage() {
                       <td className="text-right">{fmt(d.frp_max_mw, 2)}</td>
                       <td className="text-right">{fmt(d.frp_missing)}</td>
                       <td className="text-right">
-                        {d.confidence_low} / {d.confidence_nominal} / {d.confidence_high}
+                        {fmt(d.confidence_low)} / {fmt(d.confidence_nominal)} / {fmt(d.confidence_high)}
                       </td>
                       <td className="text-right">
-                        {d.day} / {d.night}
+                        {fmt(d.day)} / {fmt(d.night)}
                       </td>
                     </tr>
                   ))}
@@ -139,8 +146,9 @@ export function AnalyticsPage() {
       <section aria-label="Anomalies">
         <h2 className="mb-1 text-lg font-medium">Unusual activity (experimental)</h2>
         <p className="mb-3 text-xs text-[var(--text-secondary)]">
-          Last month of the period vs the same month in earlier, fully covered years of the same satellite (median and
-          MAD; |modified z| ≥ 3.5 is unusual). This is not a forecast.
+          Latest whole month of the period vs the same month in earlier, fully covered years of the same satellite
+          (median and MAD; |modified z| ≥ 3.5 is unusual). A month only partly inside the period is never the target.
+          This is not a forecast.
         </p>
         <AsyncView state={anomalies} what="anomalies">
           {(a) => (
@@ -175,6 +183,13 @@ export function AnalyticsPage() {
 
       <section aria-label="Sensor comparison">
         <h2 className="mb-1 text-lg font-medium">MODIS–VIIRS comparison (experimental)</h2>
+        <p className="mb-3 max-w-4xl text-xs text-[var(--text-secondary)]">
+          Calibration uses monthly totals over the whole period. Matching pairs a MODIS detection with a VIIRS detection
+          in the same or a neighbouring 1 km cell within ±15 minutes, over the last 12 months of the period only. Few or
+          no matches are expected when the satellites pass at different times of day: Terra passes in the morning,
+          Suomi-NPP, NOAA-20, NOAA-21 and Aqua in the early afternoon, and a satellite whose orbit drifts moves away from
+          the others. A low match count is therefore not a calibration failure.
+        </p>
         <AsyncView state={comparison} what="sensor comparison">
           {(c) => (
             <table className="w-full text-sm">
