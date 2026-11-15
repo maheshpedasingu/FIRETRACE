@@ -61,13 +61,16 @@ REFERENCES: dict[str, dict] = {
 
 DEFAULT_MIN_TRAIN_MONTHS = 12
 DEFAULT_MIN_VALIDATION_MONTHS = 6
+# A factor whose held-out error is larger than the mean value it predicts is not
+# used: converted months would carry more error than signal.
+MAX_RELATIVE_RMSE = 1.0
 
 
 @dataclass(frozen=True)
 class ConversionFit:
     source: str
     reference: str
-    status: str  # reference | estimated | unavailable
+    status: str  # reference | estimated | rejected | unavailable
     reason: str
     factor: float  # reference ≈ factor × source
     n_train: int
@@ -170,11 +173,18 @@ def fit_conversion(
         if len(val) > 2 and predicted.std() > 0 and observed.std() > 0
         else nan
     )
+    relative = rmse / mean_obs if mean_obs > 0 else nan
+    rejected = not (relative <= MAX_RELATIVE_RMSE)
     return ConversionFit(
         source,
         reference,
-        "estimated",
-        "ratio of sums on training years; evaluated on held-out validation years",
+        "rejected" if rejected else "estimated",
+        (
+            f"held-out error is {relative:.0%} of the mean (limit "
+            f"{MAX_RELATIVE_RMSE:.0%}); factor not used"
+            if rejected
+            else "ratio of sums on training years; evaluated on held-out validation years"
+        ),
         factor,
         len(train),
         len(val),
@@ -183,7 +193,7 @@ def fit_conversion(
         float(residual.mean()),
         float(residual.abs().mean()),
         rmse,
-        rmse / mean_obs if mean_obs > 0 else nan,
+        relative,
         corr,
     )
 
@@ -232,7 +242,7 @@ def harmonize(
                 with_data = [p for p, r in any_rows if _has_data(r, metric)]
                 note = (
                     f"data from {', '.join(with_data)} but no conversion factor to "
-                    f"{ref_name} (not enough overlap months)"
+                    f"{ref_name} (not enough overlap months, or the fit failed validation)"
                     if with_data
                     else "no imported data"
                 )

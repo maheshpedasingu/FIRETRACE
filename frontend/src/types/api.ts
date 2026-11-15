@@ -159,7 +159,7 @@ export interface HarmonizedCell {
 export interface ConversionFit {
   source: string;
   reference: string;
-  status: "reference" | "estimated" | "unavailable";
+  status: "reference" | "estimated" | "rejected" | "unavailable";
   reason: string;
   factor: number | null;
   n_train: number;

@@ -18,6 +18,8 @@
 - `python -m app.cli.area_profile`: time and peak memory of each dashboard step.
 
 ### Fixed (Phase 7)
+- A conversion factor whose held-out error exceeds 100 % of the mean is now `rejected`
+  and not applied (previously it was used with its large uncertainty shown).
 - Out of memory: opening the dashboard on India 2000–2026 made the user's laptop stop
   responding. Area queries loaded every cell-day of the area and period at once
   (several GB per copy), once per parallel request. Area statistics are now computed

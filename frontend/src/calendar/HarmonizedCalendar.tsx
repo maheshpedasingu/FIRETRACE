@@ -54,10 +54,10 @@ function FitsTable({ fits, reference }: { fits: ConversionFit[]; reference: stri
             <td className="text-right tabular-nums">{f.status === "reference" ? "1" : fmt(f.factor, 3)}</td>
             <td className="text-right tabular-nums">{f.status === "reference" ? "—" : `${f.n_train} / ${f.n_validation}`}</td>
             <td className="text-right tabular-nums">
-              {f.status === "estimated" ? `${fmt(f.rmse, 1)} (${fmt((f.relative_rmse ?? 0) * 100)}%)` : "—"}
+              {f.status === "estimated" || f.status === "rejected" ? `${fmt(f.rmse, 1)} (${fmt((f.relative_rmse ?? 0) * 100)}%)` : "—"}
             </td>
             <td className="text-right tabular-nums">{fmt(f.log_correlation, 2)}</td>
-            <td className="text-xs text-[var(--text-secondary)]">{f.status === "unavailable" ? f.reason : ""}</td>
+            <td className="text-xs text-[var(--text-secondary)]">{f.status === "unavailable" || f.status === "rejected" ? f.reason : ""}</td>
           </tr>
         ))}
       </tbody>

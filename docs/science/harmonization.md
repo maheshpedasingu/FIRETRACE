@@ -128,7 +128,12 @@ continues seamlessly into the VIIRS era (`app/harmonization/harmonized.py`,
    years. Every third overlap year (the 2nd, 5th, …) is held out for validation: bias,
    MAE, RMSE, RMSE relative to the mean, and the correlation of log(1 + count). At least
    12 training and 6 validation months are required; otherwise no factor is produced and
-   months that would need it are shown as missing with the reason.
+   months that would need it are shown as missing with the reason. A factor whose
+   held-out RMSE exceeds 100 % of the mean reference value is `rejected`: it is shown
+   with its error but never applied, because converted months would carry more error
+   than signal. Real example: Terra in a 100 km circle over Punjab (2012–2026) gave a
+   factor of 6.99 with 196 % validation error; crop-residue fires there burn mostly in
+   the afternoon, after Terra's morning overpass.
 5. **Month value.** Sources are tried in a fixed priority order (reference first, then
    the other sensor's platforms); the first one with complete coverage and a factor gives
    the value. If none is complete, a partially covered source gives a `partial` value;

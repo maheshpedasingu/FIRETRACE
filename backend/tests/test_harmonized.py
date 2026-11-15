@@ -167,6 +167,22 @@ def test_fit_conversion_reports_validation_error():
     assert f.status == "estimated" and f.rmse > 0 and 0 < f.relative_rmse < 1
 
 
+def test_fit_with_error_larger_than_the_mean_is_rejected_and_not_used():
+    s = synthetic()
+    noisy = s.platform == "Suomi-NPP"
+    s.loc[noisy, "detections"] = s.loc[noisy, "detections"] * np.where(
+        s.loc[noisy, "month"] % 2 == 0, 0.05, 6.0
+    )
+    f = fit_conversion(with_modis_combined(s, "detections"), "Suomi-NPP", MODIS_COMBINED)
+    assert f.status == "rejected" and f.relative_rmse > 1
+    assert math.isfinite(f.factor) and "not used" in f.reason
+    result = harmonize(s, reference="modis")
+    assert fit(result, "Suomi-NPP")["status"] == "rejected"
+    assert (result["cells"]["source"] != "Suomi-NPP").all()
+    later = cell(result, 2017, 6)
+    assert not bool(later["converted"]) and "failed validation" in later["note"]
+
+
 def test_platform_data_start_dates():
     assert PLATFORM_DATA_START["Aqua"] == date(2002, 7, 4)
     assert first_record_day("NOAA-21") == date(2023, 3, 1)
