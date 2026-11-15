@@ -18,6 +18,7 @@ from app.analytics.observations import iter_observations
 from app.analytics.series import (
     AreaBBox,
     drop_superseded,
+    latest_whole_month,
 )
 from app.analytics.yearly import yearly_summary
 from app.harmonization.aggregate_store import AggregateStore
@@ -275,7 +276,7 @@ def anomalies(ctx: AreaContext, metric: str, min_history_years: int, target: str
     if target:
         ty, tm = (int(x) for x in target.split("-"))
     else:
-        ty, tm = ctx.end.year, ctx.end.month
+        ty, tm = latest_whole_month(ctx.start, ctx.end)
     assessed = [assess(s, p, ty, tm, metric, min_history_years).__dict__ for p in ctx.platforms]
     return {
         "status": "EXPERIMENTAL",

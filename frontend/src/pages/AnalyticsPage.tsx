@@ -128,10 +128,10 @@ export function AnalyticsPage() {
                       <td className="text-right">{fmt(d.frp_max_mw, 2)}</td>
                       <td className="text-right">{fmt(d.frp_missing)}</td>
                       <td className="text-right">
-                        {d.confidence_low} / {d.confidence_nominal} / {d.confidence_high}
+                        {fmt(d.confidence_low)} / {fmt(d.confidence_nominal)} / {fmt(d.confidence_high)}
                       </td>
                       <td className="text-right">
-                        {d.day} / {d.night}
+                        {fmt(d.day)} / {fmt(d.night)}
                       </td>
                     </tr>
                   ))}
@@ -145,8 +145,9 @@ export function AnalyticsPage() {
       <section aria-label="Anomalies">
         <h2 className="mb-1 text-lg font-medium">Unusual activity (experimental)</h2>
         <p className="mb-3 text-xs text-[var(--text-secondary)]">
-          Last month of the period vs the same month in earlier, fully covered years of the same satellite (median and
-          MAD; |modified z| ≥ 3.5 is unusual). This is not a forecast.
+          Latest whole month of the period vs the same month in earlier, fully covered years of the same satellite
+          (median and MAD; |modified z| ≥ 3.5 is unusual). A month only partly inside the period is never the target.
+          This is not a forecast.
         </p>
         <AsyncView state={anomalies} what="anomalies">
           {(a) => (
@@ -181,6 +182,13 @@ export function AnalyticsPage() {
 
       <section aria-label="Sensor comparison">
         <h2 className="mb-1 text-lg font-medium">MODIS–VIIRS comparison (experimental)</h2>
+        <p className="mb-3 max-w-4xl text-xs text-[var(--text-secondary)]">
+          Calibration uses monthly totals over the whole period. Matching pairs a MODIS detection with a VIIRS detection
+          in the same or a neighbouring 1 km cell within ±15 minutes, over the last 12 months of the period only. Few or
+          no matches are expected when the satellites pass at different times of day: Terra passes in the morning,
+          Suomi-NPP, NOAA-20, NOAA-21 and Aqua in the early afternoon, and a satellite whose orbit drifts moves away from
+          the others. A low match count is therefore not a calibration failure.
+        </p>
         <AsyncView state={comparison} what="sensor comparison">
           {(c) => (
             <table className="w-full text-sm">

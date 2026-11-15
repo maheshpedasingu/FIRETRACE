@@ -39,17 +39,22 @@ Out of scope: Landsat, GOES and burned-area products offered by FIRMS.
 7. **Exports** carry a `.provenance.json` sidecar with area, period, filters, platforms,
    rows per platform, NRT rows superseded by SP, source files with SHA-256, and caveats.
 
-## Real data processed (complete list, as of 2026-11-14)
+## Real data processed (complete list, as of 2026-11-15)
 
 | # | Product | Platform | Area | UTC dates | Detections | Invalid | Result |
 |---|---|---|---|---|---|---|---|
 | 1 | VIIRS_NOAA20_NRT (C2, NRT, version `2.0NRT`) | NOAA-20 | bbox 76.7, 12.6, 84.8, 19.9 (approx. Andhra Pradesh, India; an example area) | 2026-11-11 to 2026-11-13 | 462 | 0 | Imported; re-import skipped by checksum; store verified (0 duplicate ids, 0 misplaced rows); November 2026: 386 cell-days, 363 unique 1 km cells, partial coverage (3 of 14 days) |
 | 2 | MODIS_NRT (C6.1, NRT) | Terra, Aqua | bbox −150, −30, −140, −20 (open South Pacific) | 2026-11-12 | 0 | 0 | Header-only response; recorded as a covered zero for both platforms |
+| 3 | FIRMS Archive Download 850390, `DL_FIRE_SV-C2_850390.zip` (152 MB): VIIRS S-NPP C2, SP (`fire_archive_*`, version `2`) to 2026-07-31 and NRT (`fire_nrt_*`, `2.0NRT`) from 2026-08-01 | Suomi-NPP | country India | requested 2000-11-01 to 2026-11-07; data 2012-01-20 to 2026-11-02 | 8,758,392 read; 8,758,389 written (3 exact duplicates in NASA's file) | 0 | Imported in ~25 min; coverage declared `--country India` |
+| 4 | FIRMS Archive Download 850389, `DL_FIRE_M-C61_850389.zip` (33.7 MB): MODIS C6.1, SP (versions `6.03` = C6, `61.03` = C6.1) to 2026-08-31 and NRT (`6.1NRT`) from 2026-09-01 | Terra, Aqua | country India | 2000-11-01 to 2026-11-07 (Terra from 2000-11-01, Aqua from 2002-07-04) | 1,923,991 | 0 | Imported in ~4 min |
 
-Both came from the FIRMS Area API on the user's Windows PC. **This is all the real data
-FIRETRACE has processed.** There is no global coverage, no multi-year history and no
-standard-processing (SP) data yet. Every other result in this repository (tests,
-benchmarks) uses data labelled SYNTHETIC TEST DATA.
+Datasets 1–2 came from the FIRMS Area API, 3–4 from the FIRMS Archive Download Tool, all
+on the user's Windows PC. The store holds **10,682,380 detections** for India and the
+dashboard reports exactly that total. **This is all the real data FIRETRACE has
+processed:** India only (MODIS 2000–2026, VIIRS S-NPP 2012–2026) plus the two small API
+windows; no NOAA-20/21 archives and no other country. Every other result in this
+repository (tests, benchmarks) uses data labelled SYNTHETIC TEST DATA. Results of the
+harmonization on this data: `docs/validation/india_harmonization.md`.
 
 Live FIRMS observations made while fetching (2026-11-14) are in
 `docs/architecture/firms-api.md` (availability columns, end dates per product, DAY_RANGE

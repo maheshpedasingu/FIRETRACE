@@ -102,6 +102,20 @@ def months_between(start: date, end: date) -> list[tuple[int, int]]:
     return months
 
 
+def latest_whole_month(start: date, end: date) -> tuple[int, int]:
+    """The latest calendar month lying wholly inside start..end (the default target for
+    history comparisons); the month of ``end`` if no whole month fits."""
+    if (
+        end.day == calendar.monthrange(end.year, end.month)[1]
+        and date(end.year, end.month, 1) >= start
+    ):
+        return end.year, end.month
+    year, month = (end.year, end.month - 1) if end.month > 1 else (end.year - 1, 12)
+    if date(year, month, 1) >= start:
+        return year, month
+    return end.year, end.month
+
+
 def sp_days_by_platform(
     in_area: pd.DataFrame, aoi: AreaBBox, start: date, end: date, coverage: list[dict]
 ) -> dict[str, set[date]]:

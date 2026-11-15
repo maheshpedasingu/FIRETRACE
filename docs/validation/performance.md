@@ -88,6 +88,18 @@ Opening the dashboard on that area and period then made the laptop stop respondi
 (out of memory): each request still loaded every cell-day of the area and period at
 once, several GB per copy. Phase 7j computes area statistics one aggregate month at a
 time and keeps only small results (`app/analytics/area_stream.py`); memory no longer
-grows with the length of the period. Measure with `python -m app.cli.area_profile`
-before opening the dashboard; results to be recorded here.
+grows with the length of the period. Measured with `python -m app.cli.area_profile` on the user's PC (commit aacddcb),
+India bbox + country, 2000-11-01 to 2026-11-07, 10,682,380 detections:
+
+| Step | Time | Peak memory |
+|---|---|---|
+| aggregates up to date | 0.8 s | 115 MB |
+| area context (streamed, ~490 aggregate months) | 44.2 s | 604 MB |
+| overview summary | 4.2 s | 604 MB |
+| harmonized calendar | 0.8 s | 604 MB |
+| yearly table | 0.1 s | 604 MB |
+
+The area context is built once per area and period and shared by all dashboard
+requests; the dashboard then loaded Overview, Calendar (both unit choices) and
+Analytics without memory problems.
 

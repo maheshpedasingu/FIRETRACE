@@ -160,3 +160,13 @@ def test_antimeridian_aoi_selects_both_sides():
     aoi = AreaBBox(175, -20, -175, -10)
     table = monthly_series(data, aoi, date(2026, 11, 11), date(2026, 11, 11), [], ["NOAA-20"])
     assert row(table, "NOAA-20", 2026, 11).detections == 2
+
+
+def test_latest_whole_month_is_the_default_history_target():
+    from app.analytics.series import latest_whole_month
+
+    # real case: period ending 7 Nov 2026 -> October is the latest whole month
+    assert latest_whole_month(date(2000, 11, 1), date(2026, 11, 7)) == (2026, 10)
+    assert latest_whole_month(date(2026, 1, 1), date(2026, 10, 31)) == (2026, 10)
+    assert latest_whole_month(date(2026, 1, 1), date(2026, 1, 9)) == (2026, 1)  # none fits
+    assert latest_whole_month(date(2025, 6, 1), date(2026, 1, 5)) == (2025, 12)
