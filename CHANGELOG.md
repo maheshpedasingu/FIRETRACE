@@ -11,6 +11,13 @@
   count as coverage for areas inside that country.
 
 ### Fixed (Phase 7)
+- Out of memory: opening the dashboard on India 2000–2026 made the user's laptop stop
+  responding. Area queries loaded every cell-day of the area and period at once
+  (several GB per copy), once per parallel request. Area statistics are now computed
+  one aggregate month at a time (`app/analytics/area_stream.py`), keeping only small
+  per-month results, totals, unique-cell ids and SP days; the CLIs (area summary,
+  anomaly report, exports) use the same path. Verified identical to the in-memory path
+  by test. New `python -m app.cli.area_profile` prints time and peak memory per step.
 - Every dashboard page was slow on 26 years of real India data (10.7 million
   detections): each request rescanned ~4,500 files for stale aggregates, re-read every
   aggregate month, and Overview/Analytics read all detections; pages send several

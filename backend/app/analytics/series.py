@@ -155,8 +155,60 @@ def select_cell_days(
     return drop_superseded(sel, sp_days_by_platform(sel, aoi, start, end, coverage))
 
 
-def monthly_series(
-    cell_days: pd.DataFrame,
+SERIES_VALUE_COLUMNS = [
+    "detections", "cell_days", "unique_cells", "day_detections", "night_detections",
+    "frp_sum_mw", "frp_max_mw",
+]  # fmt: skip
+
+# Cell id for counting unique cells (EASE-Grid 2.0 1 km: < 40,000 columns and rows).
+_CELL_KEY = 100_000
+
+
+def month_stats(sel: pd.DataFrame) -> pd.DataFrame:
+    """Per platform × year × month statistics of selected cell-days (see select_cell_days).
+
+    Unique cells are exact per month because a cell-day belongs to exactly one month."""
+    columns = ["platform", "year", "month", "detections", "cell_days", "unique_cells",
+               "day_detections", "night_detections", "frp_sum_mw", "frp_count",
+               "frp_max_mw", "processing_status_used"]  # fmt: skip
+    if sel.empty:
+        return pd.DataFrame(columns=columns)
+    stamps = pd.to_datetime(sel["acquisition_date"])
+    frame = pd.DataFrame(
+        {
+            "platform": sel["platform"].astype(str).to_numpy(),
+            "year": stamps.dt.year.to_numpy(),
+            "month": stamps.dt.month.to_numpy(),
+            "cell": sel["cell_col"].to_numpy("int64") * _CELL_KEY
+            + sel["cell_row"].to_numpy("int64"),
+            "detections": sel["detections"].to_numpy("int64"),
+            "day_detections": sel["day_detections"].to_numpy("int64"),
+            "night_detections": sel["night_detections"].to_numpy("int64"),
+            "frp_sum_mw": sel["frp_sum_mw"].to_numpy("float64"),
+            "frp_count": sel["frp_count"].to_numpy("int64"),
+            "frp_max_mw": sel["frp_max_mw"].to_numpy("float64"),
+            "processing_status": sel["processing_status"].astype(str).to_numpy(),
+        }
+    )
+    grouped = frame.groupby(["platform", "year", "month"], sort=True)
+    stats = grouped.agg(
+        detections=("detections", "sum"),
+        cell_days=("detections", "size"),
+        unique_cells=("cell", "nunique"),
+        day_detections=("day_detections", "sum"),
+        night_detections=("night_detections", "sum"),
+        frp_sum_mw=("frp_sum_mw", "sum"),
+        frp_count=("frp_count", "sum"),
+        frp_max_mw=("frp_max_mw", "max"),
+    )
+    stats["processing_status_used"] = grouped["processing_status"].agg(
+        lambda v: ",".join(sorted(set(v)))
+    )
+    return stats.reset_index()[columns]
+
+
+def series_from_stats(
+    stats: pd.DataFrame,
     aoi: AreaBBox,
     start: date,
     end: date,
@@ -164,60 +216,45 @@ def monthly_series(
     platforms: list[str],
 ) -> pd.DataFrame:
     """One row per platform × month with counts and a coverage status."""
-    sel = select_cell_days(cell_days, aoi, start, end, coverage)
+    by_key = {
+        (str(r.platform), int(r.year), int(r.month)): r for r in stats.itertuples(index=False)
+    }
     rows = []
     for platform in platforms:
         days = covered_days(coverage, aoi, platform, start, end)
-        part = sel[sel["platform"] == platform] if not sel.empty else sel
-        by_month: dict[tuple[int, int], pd.DataFrame] = {}
-        if len(part):
-            stamps = pd.to_datetime(part["acquisition_date"])
-            part = part.assign(_year=stamps.dt.year.to_numpy(), _month=stamps.dt.month.to_numpy())
-            # One pass over the rows instead of one scan per month (decades of data).
-            by_month = {
-                (int(y), int(m)): g for (y, m), g in part.groupby(["_year", "_month"], sort=False)
-            }
         for year, month in months_between(start, end):
             first = max(date(year, month, 1), start)
             last = min(date(year, month, calendar.monthrange(year, month)[1]), end)
             n_days = (last - first).days + 1
             n_cov = sum(1 for d in days if first <= d <= last)
-            m = by_month.get((year, month), part.iloc[0:0])
             # "complete" means the WHOLE calendar month is covered. A month cut short by
             # the selected period (e.g. 1-7 Nov) is partial even if every selected day is
             # covered: calendars, anomalies, history comparisons and calibration compare
             # whole months, so a truncated month must never pass as complete.
             month_days = calendar.monthrange(year, month)[1]
             status = "complete" if n_cov == month_days else "partial" if n_cov else "missing"
-            has_rows = not m.empty
-            if not has_rows and status == "missing":
-                values = dict.fromkeys(
-                    [
-                        "detections",
-                        "cell_days",
-                        "unique_cells",
-                        "day_detections",
-                        "night_detections",
-                        "frp_sum_mw",
-                        "frp_max_mw",
-                    ],
-                    np.nan,
-                )
+            m = by_key.get((platform, year, month))
+            if m is None and status == "missing":
+                values = dict.fromkeys(SERIES_VALUE_COLUMNS, np.nan)
+                statuses = ""
+            elif m is None:
+                values = {c: 0 for c in SERIES_VALUE_COLUMNS} | {
+                    "frp_sum_mw": np.nan,
+                    "frp_max_mw": np.nan,
+                }
                 statuses = ""
             else:
-                frp_count = int(m["frp_count"].sum()) if has_rows else 0
+                has_frp = int(m.frp_count) > 0
                 values = {
-                    "detections": int(m["detections"].sum()) if has_rows else 0,
-                    "cell_days": len(m),
-                    "unique_cells": int(m[["cell_col", "cell_row"]].drop_duplicates().shape[0])
-                    if has_rows
-                    else 0,
-                    "day_detections": int(m["day_detections"].sum()) if has_rows else 0,
-                    "night_detections": int(m["night_detections"].sum()) if has_rows else 0,
-                    "frp_sum_mw": float(m["frp_sum_mw"].sum()) if frp_count else np.nan,
-                    "frp_max_mw": float(m["frp_max_mw"].max()) if frp_count else np.nan,
+                    "detections": int(m.detections),
+                    "cell_days": int(m.cell_days),
+                    "unique_cells": int(m.unique_cells),
+                    "day_detections": int(m.day_detections),
+                    "night_detections": int(m.night_detections),
+                    "frp_sum_mw": float(m.frp_sum_mw) if has_frp else np.nan,
+                    "frp_max_mw": float(m.frp_max_mw) if has_frp else np.nan,
                 }
-                statuses = ",".join(sorted(set(m["processing_status"]))) if has_rows else ""
+                statuses = m.processing_status_used
             rows.append(
                 {
                     "platform": platform,
@@ -231,3 +268,17 @@ def monthly_series(
                 }
             )
     return pd.DataFrame(rows)
+
+
+def monthly_series(
+    cell_days: pd.DataFrame,
+    aoi: AreaBBox,
+    start: date,
+    end: date,
+    coverage: list[dict],
+    platforms: list[str],
+) -> pd.DataFrame:
+    """One row per platform × month with counts and a coverage status (in memory; for
+    decades of data use app.analytics.area_stream, which reads one month at a time)."""
+    sel = select_cell_days(cell_days, aoi, start, end, coverage)
+    return series_from_stats(month_stats(sel), aoi, start, end, coverage, platforms)

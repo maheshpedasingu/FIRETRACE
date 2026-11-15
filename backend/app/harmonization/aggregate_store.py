@@ -105,11 +105,11 @@ class AggregateStore:
                 self.build_month(key)
             self._fresh_for = generation_token
 
-    def read(self, sensors: list[str] | None = None, start=None, end=None) -> pd.DataFrame:
-        """Read cell-days, limited to whole months overlapping start..end."""
-        frames = []
+    def month_paths(self, sensors: list[str] | None = None, start=None, end=None) -> list[Path]:
+        """Aggregate files of whole months overlapping start..end (one per sensor-month)."""
         if not self.root.is_dir():
-            return pd.DataFrame()
+            return []
+        paths = []
         for path in sorted(self.root.rglob("*.parquet")):
             sensor, year, month_file = path.relative_to(self.root).parts
             if sensors and sensor not in sensors:
@@ -119,5 +119,11 @@ class AggregateStore:
                 continue
             if end is not None and (year, month) > (end.year, end.month):
                 continue
-            frames.append(pd.read_parquet(path))
+            paths.append(path)
+        return paths
+
+    def read(self, sensors: list[str] | None = None, start=None, end=None) -> pd.DataFrame:
+        """Read cell-days, limited to whole months overlapping start..end. Loads all of
+        them at once: for large areas and long periods use area_stream.stream_area."""
+        frames = [pd.read_parquet(p) for p in self.month_paths(sensors, start, end)]
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()

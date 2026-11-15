@@ -52,16 +52,33 @@ def platform_distributions(observations: pd.DataFrame) -> pd.DataFrame:
 def distributions_from_cell_days(
     cell_days: pd.DataFrame, frp_detections: pd.DataFrame | None = None
 ) -> pd.DataFrame:
-    """Per-platform distributions from cell-day aggregates (exact counts, FRP sum / mean /
-    max), with FRP median and percentiles from ``frp_detections`` (individual detections,
-    possibly a shorter period) because percentiles cannot be recovered from sums."""
+    """Per-platform distributions from cell-day aggregates (see distributions_from_totals)."""
     if cell_days.empty:
         return pd.DataFrame()
+    sums = ["detections", "day_detections", "night_detections", "unknown_daynight_detections",
+            "frp_sum_mw", "frp_count", "confidence_low", "confidence_nominal",
+            "confidence_high", "confidence_missing"]  # fmt: skip
+    grouped = cell_days.groupby("platform", sort=True)
+    totals = grouped[sums].sum()
+    totals["frp_max_mw"] = grouped["frp_max_mw"].max()
+    return distributions_from_totals(totals.reset_index(), frp_detections)
+
+
+def distributions_from_totals(
+    totals: pd.DataFrame, frp_detections: pd.DataFrame | None = None
+) -> pd.DataFrame:
+    """Per-platform distributions from summed cell-day aggregates (exact counts, FRP
+    sum / mean / max), with FRP median and percentiles from ``frp_detections``
+    (individual detections, possibly a shorter period): percentiles cannot be recovered
+    from sums."""
+    if totals.empty:
+        return pd.DataFrame()
     rows = []
-    for platform, g in cell_days.groupby("platform", sort=True):
-        detections = int(g["detections"].sum())
-        frp_values = int(g["frp_count"].sum())
-        frp_sum = float(g["frp_sum_mw"].sum())
+    for t in totals.sort_values("platform").itertuples(index=False):
+        platform = str(t.platform)
+        detections = int(t.detections)
+        frp_values = int(t.frp_count)
+        frp_sum = float(t.frp_sum_mw)
         detail = (
             pd.to_numeric(
                 frp_detections.loc[frp_detections["platform"] == platform, "frp_mw"],
@@ -86,14 +103,14 @@ def distributions_from_cell_days(
                 "frp_p90_mw": pct(0.9),
                 "frp_p99_mw": pct(0.99),
                 "frp_percentile_detections": int(len(detail)),
-                "frp_max_mw": float(g["frp_max_mw"].max()) if frp_values else np.nan,
-                "confidence_low": int(g["confidence_low"].sum()),
-                "confidence_nominal": int(g["confidence_nominal"].sum()),
-                "confidence_high": int(g["confidence_high"].sum()),
-                "confidence_missing": int(g["confidence_missing"].sum()),
-                "day": int(g["day_detections"].sum()),
-                "night": int(g["night_detections"].sum()),
-                "daynight_unknown": int(g["unknown_daynight_detections"].sum()),
+                "frp_max_mw": float(t.frp_max_mw) if frp_values else np.nan,
+                "confidence_low": int(t.confidence_low),
+                "confidence_nominal": int(t.confidence_nominal),
+                "confidence_high": int(t.confidence_high),
+                "confidence_missing": int(t.confidence_missing),
+                "day": int(t.day_detections),
+                "night": int(t.night_detections),
+                "daynight_unknown": int(t.unknown_daynight_detections),
             }
         )
     return pd.DataFrame(rows)

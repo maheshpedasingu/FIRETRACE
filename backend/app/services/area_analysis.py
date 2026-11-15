@@ -5,21 +5,19 @@ from __future__ import annotations
 import calendar as _calendar
 import threading
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, timedelta
 
 import pandas as pd
 
+from app.analytics.area_stream import AreaAggregates, stream_area
 from app.analytics.baselines import assess, assess_all, harmonized_index
 from app.analytics.calendar import build_calendar
-from app.analytics.distributions import distributions_from_cell_days
+from app.analytics.distributions import distributions_from_totals
 from app.analytics.observations import iter_observations
 from app.analytics.series import (
     AreaBBox,
     drop_superseded,
-    monthly_series,
-    select_cell_days,
-    sp_days_by_platform,
 )
 from app.analytics.yearly import yearly_summary
 from app.harmonization.aggregate_store import AggregateStore
@@ -34,44 +32,27 @@ MATCHING_DAYS = 366
 
 @dataclass
 class AreaContext:
-    """Everything one area/period query needs. ``cell_days`` is already restricted to
-    the area (whole months overlapping the period). The monthly series and SP days are
-    computed once and reused by every endpoint that shares this context."""
+    """Everything one area/period query needs, computed by reading the aggregates one
+    month at a time (app.analytics.area_stream): only small results are held, so
+    memory stays bounded for decades of data. Shared by every endpoint of a page."""
 
     aoi: AreaBBox
     start: date
     end: date
     platforms: list[str]
-    cell_days: pd.DataFrame
     coverage: list[dict]
-    _series: pd.DataFrame | None = field(default=None, repr=False)
-    _sp_days: dict[str, set[date]] | None = field(default=None, repr=False)
-    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
-
-    def in_area_cells(self) -> pd.DataFrame:
-        return self.cell_days
+    data: AreaAggregates
 
     def sp_days(self) -> dict[str, set[date]]:
-        with self._lock:
-            if self._sp_days is None:
-                self._sp_days = sp_days_by_platform(
-                    self.cell_days, self.aoi, self.start, self.end, self.coverage
-                )
-            return self._sp_days
+        return self.data.sp_days
 
     def monthly(self) -> pd.DataFrame:
-        with self._lock:
-            if self._series is None:
-                self._series = monthly_series(self.cell_days, self.aoi, self.start, self.end,
-                                              self.coverage, self.platforms)  # fmt: skip
-            return self._series.copy()
+        return self.data.series.copy()
 
-    def selected_cells(self) -> pd.DataFrame:
-        """Cell-days in the area and period, NRT superseded by SP, selected platforms."""
-        sel = select_cell_days(self.cell_days, self.aoi, self.start, self.end, self.coverage)
-        if len(sel):
-            sel = sel[sel["platform"].isin(self.platforms).to_numpy()]
-        return sel
+    def totals(self) -> pd.DataFrame:
+        """Per-platform totals for the selected platforms (area, period, superseded)."""
+        t = self.data.totals
+        return t[t["platform"].isin(self.platforms)].reset_index(drop=True)
 
 
 def _area_key(aoi: AreaBBox) -> tuple:
@@ -131,10 +112,8 @@ def context(
     fresh after rebuilding any stale aggregates."""
 
     def build() -> AreaContext:
-        cells = aggregates.read(start=start, end=end)
-        if len(cells):
-            cells = cells[aoi.contains_points(cells["cell_lat"], cells["cell_lon"]).to_numpy()]
-        return AreaContext(aoi, start, end, list(platforms), cells, coverage)
+        data = stream_area(aggregates, aoi, start, end, coverage, list(platforms))
+        return AreaContext(aoi, start, end, list(platforms), coverage, data)
 
     if generation_token is None:
         aggregates.build_stale()
@@ -153,11 +132,16 @@ def series(ctx: AreaContext) -> pd.DataFrame:
 REQUIRED_DETECTION_COLUMNS = ("platform", "processing_status", "acquisition_date")
 
 
-def iter_detections(ctx: AreaContext, processed, columns=None, supersede: bool = True):
+def iter_detections(
+    ctx: AreaContext, processed, columns=None, supersede: bool = True, start: date | None = None
+):
+    """Individual detections in the area and period (from ``start`` if given), file by
+    file, NRT superseded by SP per platform-day."""
     sp = ctx.sp_days() if supersede else None
     if columns is not None:
         columns = list(dict.fromkeys([*columns, *REQUIRED_DETECTION_COLUMNS]))
-    for frame in iter_observations(processed, ctx.aoi, ctx.start, ctx.end, columns=columns):
+    first = max(start, ctx.start) if start is not None else ctx.start
+    for frame in iter_observations(processed, ctx.aoi, first, ctx.end, columns=columns):
         if sp:
             frame = drop_superseded(frame, sp)
         frame = frame[frame["platform"].isin(ctx.platforms).to_numpy()]
@@ -209,15 +193,15 @@ def aggregate_total(
     (the aggregates hold each marginal count, not the combination)."""
     if confidence and day_night:
         return None
-    sel = ctx.selected_cells()
-    if not len(sel):
+    t = ctx.totals()
+    if not len(t):
         return 0
     if confidence:
-        return int(sum(sel[f"confidence_{c}"].sum() for c in confidence))
+        return int(sum(t[f"confidence_{c}"].sum() for c in confidence))
     if day_night:
         names = {"D": "day_detections", "N": "night_detections"}
-        return int(sum(sel[names[d]].sum() for d in day_night))
-    return int(sel["detections"].sum())
+        return int(sum(t[names[d]].sum() for d in day_night))
+    return int(t["detections"].sum())
 
 
 # FRP median / percentiles need individual detections; for long periods only the last
@@ -229,31 +213,27 @@ def summary(ctx: AreaContext, processed) -> dict:
     """Totals and distributions from cell-day aggregates (exact and fast for decades of
     data); FRP percentiles from individual detections of the last year of the period."""
     s = series(ctx)
-    sel = ctx.selected_cells()
+    totals = ctx.totals()
     frp_start = max(ctx.start, ctx.end - timedelta(days=FRP_PERCENTILE_DAYS - 1))
-    frp_ctx = AreaContext(ctx.aoi, frp_start, ctx.end, ctx.platforms, ctx.cell_days,
-                          ctx.coverage, _sp_days=ctx.sp_days())  # fmt: skip
-    frames = list(iter_detections(frp_ctx, processed, columns=["platform", "frp_mw"]))
+    frames = list(iter_detections(ctx, processed, columns=["platform", "frp_mw"],
+                                  start=frp_start))  # fmt: skip
     frp = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    by_platform = totals.set_index("platform") if len(totals) else totals
     per_platform = []
     for platform in ctx.platforms:
         part = s[s["platform"] == platform]
-        cell_part = sel[sel["platform"] == platform] if len(sel) else sel
         per_platform.append(
             {
                 "platform": platform,
                 "detections": int(part["detections"].fillna(0).sum()),
-                "unique_cells": int(cell_part[["cell_col", "cell_row"]].drop_duplicates().shape[0])
-                if len(cell_part)
+                "unique_cells": int(by_platform.loc[platform, "unique_cells"])
+                if len(totals) and platform in by_platform.index
                 else 0,
                 "months_complete": int((part["coverage_status"] == "complete").sum()),
                 "months_partial": int((part["coverage_status"] == "partial").sum()),
                 "months_missing": int((part["coverage_status"] == "missing").sum()),
             }
         )
-    first = last = None
-    if len(sel):
-        first, last = min(sel["acquisition_date"]), max(sel["acquisition_date"])
     return {
         "area": {
             "west": ctx.aoi.west,
@@ -263,11 +243,11 @@ def summary(ctx: AreaContext, processed) -> dict:
             "country": ctx.aoi.country,
         },  # fmt: skip
         "period": {"start": ctx.start, "end": ctx.end},
-        "total_detections": int(sel["detections"].sum()) if len(sel) else 0,
-        "first_detection_date": first,
-        "last_detection_date": last,
+        "total_detections": int(totals["detections"].sum()) if len(totals) else 0,
+        "first_detection_date": min(totals["first_date"]) if len(totals) else None,
+        "last_detection_date": max(totals["last_date"]) if len(totals) else None,
         "platforms": per_platform,
-        "distributions": distributions_from_cell_days(sel, frp),
+        "distributions": distributions_from_totals(totals, frp),
         "frp_percentile_period": {"start": frp_start, "end": ctx.end},
         "note": "Detections are satellite active-fire detections, not individual fires. "
         "Unique cells are counted per platform and never summed across sensors. FRP "

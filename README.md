@@ -166,6 +166,17 @@ with coverage status (blank = no data, not zero):
 python -m app.cli.area_summary --bbox 76.7,12.6,84.8,19.9 --start 2026-11-01 --end 2026-11-14
 ```
 
+## Checking time and memory for a large area
+
+Before opening the dashboard on a very large area or long period, measure it from the
+command line (read-only; stop with Ctrl+C):
+
+```powershell
+python -m app.cli.area_profile --bbox 68.1,6.7,97.4,35.7 --country India --start 2000-11-01 --end 2026-11-07
+```
+
+It prints the elapsed time and peak memory of each step the dashboard runs.
+
 ## Anomaly and validation report (experimental)
 
 ```powershell

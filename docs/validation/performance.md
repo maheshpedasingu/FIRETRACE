@@ -82,6 +82,12 @@ individual detections, and a page sends several requests at once. Changes (phase
 store-generation marker gating the aggregate check (with a build lock), one cached area
 context shared by concurrent requests, summary statistics from cell-day aggregates (FRP
 median / percentiles from the last 12 months of the period, labelled in the UI), and
-hotspot totals from aggregates. Timings after the change: to be measured on the
-Windows PC.
+hotspot totals from aggregates.
+
+Opening the dashboard on that area and period then made the laptop stop responding
+(out of memory): each request still loaded every cell-day of the area and period at
+once, several GB per copy. Phase 7j computes area statistics one aggregate month at a
+time and keeps only small results (`app/analytics/area_stream.py`); memory no longer
+grows with the length of the period. Measure with `python -m app.cli.area_profile`
+before opening the dashboard; results to be recorded here.
 

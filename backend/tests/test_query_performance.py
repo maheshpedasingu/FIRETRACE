@@ -103,3 +103,57 @@ def test_store_commit_and_aggregate_freshness(tmp_path: Path, module):
     assert len(scans) == 1  # unchanged generation: no rescan
     store.ensure_fresh("g2")
     assert len(scans) == 2
+
+
+def test_streamed_area_equals_the_in_memory_path(tmp_path: Path):
+    """Month-by-month (bounded memory) must give exactly the in-memory results,
+    including SP superseding NRT on a day that has both (SYNTHETIC TEST DATA)."""
+    pytest.importorskip("pyarrow")
+    import json
+
+    from app.analytics.area_stream import stream_area
+    from app.analytics.series import AreaBBox, monthly_series, select_cell_days
+    from app.harmonization.aggregate_store import AggregateStore, MonthKey
+
+    rows = [
+        ("VIIRS", "NOAA-20", "NRT", date(2023, 1, 15), 15.10, 80.20, "D", 5.0, "nominal"),
+        ("VIIRS", "NOAA-20", "SP", date(2023, 1, 15), 15.10, 80.20, "D", 3.0, "high"),
+        ("VIIRS", "NOAA-20", "NRT", date(2023, 2, 2), 15.20, 80.30, "N", np.nan, "low"),
+        ("VIIRS", "Suomi-NPP", "SP", date(2023, 2, 3), 15.30, 80.40, "D", 7.0, "nominal"),
+        ("MODIS", "Aqua", "SP", date(2023, 1, 20), 16.00, 81.00, "D", 9.0, ""),
+        ("MODIS", "Aqua", "SP", date(2023, 1, 20), 40.00, 10.00, "D", 9.0, ""),  # outside
+    ]
+    frame = pd.DataFrame(rows, columns=COLUMNS)
+    store = AggregateStore(tmp_path)
+    for (sensor, month), part in frame.groupby(
+        [frame["sensor"], pd.to_datetime(frame["acquisition_date"]).dt.month]
+    ):
+        path = store.month_path(MonthKey(sensor, 2023, int(month)))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        combine([aggregate(part)]).to_parquet(path, index=False)
+    aoi = AreaBBox(79, 14, 82, 17)
+    extent = json.dumps({"west": 70, "south": 10, "east": 90, "north": 25})
+    coverage = [{"platform": p, "processing_status": "NRT", "extent_type": "bbox",
+                 "extent_value": extent, "start_date": date(2023, 1, 1),
+                 "end_date": date(2023, 2, 28)} for p in ("NOAA-20", "Suomi-NPP", "Aqua")]  # fmt: skip
+    platforms = ["Terra", "Aqua", "Suomi-NPP", "NOAA-20"]
+    start, end = date(2023, 1, 1), date(2023, 2, 28)
+
+    streamed = stream_area(store, aoi, start, end, coverage, platforms)
+    in_memory = monthly_series(store.read(), aoi, start, end, coverage, platforms)
+    pd.testing.assert_frame_equal(streamed.series, in_memory, check_dtype=False)
+
+    sel = select_cell_days(store.read(), aoi, start, end, coverage)
+    totals = streamed.totals.set_index("platform")
+    assert totals.loc["NOAA-20", "detections"] == 2  # SP replaced the NRT row on 15 Jan
+    assert totals.loc["NOAA-20", "detections"] == int(
+        sel[sel.platform == "NOAA-20"].detections.sum()
+    )
+    assert totals.loc["Aqua", "detections"] == 1  # the second Aqua row is outside the area
+    assert totals.loc["NOAA-20", "first_date"] == date(2023, 1, 15)
+    assert (
+        totals.loc["NOAA-20", "confidence_high"] == 1
+        and totals.loc["NOAA-20", "confidence_low"] == 1
+    )
+    assert date(2023, 1, 15) in streamed.sp_days["NOAA-20"]
+    assert "Terra" not in totals.index  # no detections, no totals row
