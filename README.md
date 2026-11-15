@@ -1,5 +1,21 @@
 # FIRETRACE
 
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.162-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![pandas + Parquet](https://img.shields.io/badge/pandas-Parquet-150458?logo=pandas&logoColor=white)](https://pandas.pydata.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React 19](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Leaflet](https://img.shields.io/badge/Leaflet-maps-199900?logo=leaflet&logoColor=white)](https://leafletjs.com/)
+<br>
+[![Data: NASA FIRMS](https://img.shields.io/badge/data-NASA_FIRMS-0B3D91?logo=nasa&logoColor=white)](https://firms.modaps.eosdis.nasa.gov/)
+[![Sensors](https://img.shields.io/badge/sensors-MODIS_%7C_VIIRS-E8590C)](https://firms.modaps.eosdis.nasa.gov/)
+[![Tests](https://img.shields.io/badge/tests-224_backend_%7C_46_frontend-2EA44F)](PROJECT_PROGRESS.md)
+[![Release](https://img.shields.io/badge/release-v1.1.0-blue)](CHANGELOG.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Status](https://img.shields.io/badge/status-released-orange)](docs/FINAL_REPORT.md)
+
 **Fire Intelligence and Historical Activity Monitoring System** — a global
 Earth-observation platform that integrates NASA FIRMS MODIS (Terra, Aqua; C6.1) and
 VIIRS 375 m (Suomi-NPP, NOAA-20, NOAA-21; C2) active-fire detections into a
