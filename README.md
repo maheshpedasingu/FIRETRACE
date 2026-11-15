@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/firetrace-banner.jpg" alt="FIRETRACE — Global Satellite Fire Intelligence: MODIS and VIIRS harmonization, burning activity calendar, interactive global map, fire analytics" width="100%">
+</p>
+
 # FIRETRACE
 
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
@@ -9,7 +13,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![Leaflet](https://img.shields.io/badge/Leaflet-maps-199900?logo=leaflet&logoColor=white)](https://leafletjs.com/)
 <br>
-[![Data: NASA FIRMS](https://img.shields.io/badge/data-NASA_FIRMS-0B3D91?logo=nasa&logoColor=white)](https://firms.modaps.eosdis.nasa.gov/)
+[![Data: NASA FIRMS](https://img.shields.io/badge/data-NASA_FIRMS-0B3D91)](https://firms.modaps.eosdis.nasa.gov/)
 [![Sensors](https://img.shields.io/badge/sensors-MODIS_%7C_VIIRS-E8590C)](https://firms.modaps.eosdis.nasa.gov/)
 [![Tests](https://img.shields.io/badge/tests-224_backend_%7C_46_frontend-2EA44F)](PROJECT_PROGRESS.md)
 [![Release](https://img.shields.io/badge/release-v1.1.0-blue)](CHANGELOG.md)
@@ -248,3 +252,32 @@ cd ..\frontend; npm test; npm run build
 
 Code: MIT (see `LICENSE`). NASA FIRMS data is not included in this repository; when you
 use it, follow the NASA FIRMS citation and data-use policy.
+
+## Acknowledgments
+
+<p align="center">
+  <a href="https://firms.modaps.eosdis.nasa.gov/"><img src="https://img.shields.io/badge/Data_provided_by-NASA_FIRMS-0B3D91?style=for-the-badge" alt="Data provided by NASA FIRMS"></a>
+  <a href="https://www.earthdata.nasa.gov/data/tools/firms"><img src="https://img.shields.io/badge/NASA-LANCE_%7C_ESDIS-E8590C?style=for-the-badge" alt="NASA LANCE and ESDIS"></a>
+</p>
+
+**Thank you to NASA** for making satellite fire data freely available to everyone.
+FIRETRACE would not exist without it.
+
+We acknowledge the use of data and/or imagery from NASA's Fire Information for Resource
+Management System (FIRMS) (https://www.earthdata.nasa.gov/data/tools/firms), part of
+NASA's Earth Science Data and Information System (ESDIS).
+
+Data products used:
+
+- MODIS Collection 6 / 6.1 Hotspot / Active Fire Detections MCD14ML and MCD14DL
+  (Terra, Aqua), distributed from NASA FIRMS.
+  doi:[10.5067/FIRMS/MODIS/MCD14ML](https://doi.org/10.5067/FIRMS/MODIS/MCD14ML),
+  doi:[10.5067/FIRMS/MODIS/MCD14DL.NRT.0061](https://doi.org/10.5067/FIRMS/MODIS/MCD14DL.NRT.0061)
+- VIIRS 375 m Active Fire product VNP14IMGT (Suomi-NPP), distributed from NASA FIRMS.
+  doi:[10.5067/FIRMS/VIIRS/VNP14IMGT_NRT.002](https://doi.org/10.5067/FIRMS/VIIRS/VNP14IMGT_NRT.002)
+- VIIRS 375 m Active Fire product VJ114IMGT (NOAA-20), distributed from NASA FIRMS.
+  doi:[10.5067/FIRMS/VIIRS/VJ114IMGT_NRT.002](https://doi.org/10.5067/FIRMS/VIIRS/VJ114IMGT_NRT.002)
+
+FIRMS data are provided "as is" (see the
+[FIRMS disclaimer](https://www.earthdata.nasa.gov/data/tools/firms)). FIRETRACE is an
+independent project and is not affiliated with or endorsed by NASA.
