@@ -11,6 +11,8 @@
   count as coverage for areas inside that country.
 
 ### Fixed (Phase 7)
+- Overview summary crashed (KeyError 'processing_status') once standard-processing data
+  existed: it read detections without the column the SP-supersedes-NRT rule needs.
 - A month cut short by the selected period (e.g. 1–7 Nov) was "complete" if every
   selected day was covered, so 7 days were compared with full Novembers (found on the
   real India calendar: "0.30 × the median"). "Complete" now means the whole calendar

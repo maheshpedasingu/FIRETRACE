@@ -133,6 +133,16 @@ def test_summary_calendar_and_analytics(client):
     assert {c["status"] for c in comparison["calibration"]} == {"unavailable"}
 
 
+def test_summary_with_standard_processing_data(client):
+    """Regression (real India archive): with SP data present, the summary read detections
+    without processing_status and the SP-supersedes-NRT step raised KeyError."""
+    sp_rows = ROWS.replace(",2.0NRT,", ",2,")  # same SYNTHETIC rows as standard processing
+    assert upload(client, HEADER + sp_rows, name="SYNTHETIC_sp.csv").status_code == 200
+    summary = client.get("/api/hotspots/summary", params=AREA)
+    assert summary.status_code == 200, summary.text
+    assert summary.json()["total_detections"] == 3
+
+
 def test_harmonized_calendar_never_converts_without_a_fitted_factor(client):
     upload(client)  # NOAA-20 only: no overlap with MODIS, so no conversion factor exists
     body = client.get("/api/calendar/harmonized", params=AREA).json()

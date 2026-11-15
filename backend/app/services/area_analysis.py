@@ -65,8 +65,14 @@ def series(ctx: AreaContext) -> pd.DataFrame:
     return monthly_series(ctx.cell_days, ctx.aoi, ctx.start, ctx.end, ctx.coverage, ctx.platforms)
 
 
+# Columns every caller needs: platform filter and the SP-supersedes-NRT rule.
+REQUIRED_DETECTION_COLUMNS = ("platform", "processing_status", "acquisition_date")
+
+
 def iter_detections(ctx: AreaContext, processed, columns=None, supersede: bool = True):
     sp = ctx.sp_days() if supersede else None
+    if columns is not None:
+        columns = list(dict.fromkeys([*columns, *REQUIRED_DETECTION_COLUMNS]))
     for frame in iter_observations(processed, ctx.aoi, ctx.start, ctx.end, columns=columns):
         if sp:
             frame = drop_superseded(frame, sp)
